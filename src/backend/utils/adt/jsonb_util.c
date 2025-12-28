@@ -27,6 +27,7 @@
 #include "utils/memutils.h"
 #include "utils/varlena.h"
 
+#define JSONB_SORTED_VALUES 1
 /*
  * Maximum number of elements in an array (or key/value pairs in an object).
  * This is limited by two things: the size of the JEntry array must fit

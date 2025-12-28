@@ -204,30 +204,11 @@ typedef struct JsonbContainer
 #define JB_FOBJECT				0x20000000
 #define JB_FARRAY				0x40000000
 
-#define JB_TMASK				0x70000000	/* mask for container type */
-/* container types */
-#define JB_TOBJECT				0x20000000	/* object with key-value pairs
-											 * sorted by key length-alpha */
-#define JB_TOBJECT_SORTED		0x30000000	/* object with keys sorted by
-											 * length-alpha; values sorted by
-											 * length */
-#define JB_TARRAY				0x40000000	/* array */
-#define JB_TSCALAR				0x50000000	/* scalar pseudo-array */
-
-/* flags for findJsonbValueFromContainer() */
-#define JB_FOBJECT				0x01
-#define JB_FARRAY				0x02
-
 /* convenience macros for accessing a JsonbContainer struct */
 #define JsonContainerSize(jc)		((jc)->header & JB_CMASK)
-//#define JsonContainerIsScalar(jc)	(((jc)->header & JB_FSCALAR) != 0)
-//#define JsonContainerIsObject(jc)	(((jc)->header & JB_FOBJECT) != 0)
-//#define JsonContainerIsArray(jc)	(((jc)->header & JB_FARRAY) != 0)
-#define JB_ROOT_COUNT(jbp_)		(JB_HEADER(jbp_) & JB_CMASK)
-#define JB_ROOT_IS_SCALAR(jbp_) ((JB_HEADER(jbp_) & JB_TMASK) == JB_TSCALAR)
-#define JB_ROOT_IS_OBJECT(jbp_) ((JB_HEADER(jbp_) & JB_TMASK) == JB_TOBJECT)
-#define JB_ROOT_IS_ARRAY(jbp_)	((JB_HEADER(jbp_) & JB_TMASK) == JB_TSCALAR || \
-								 (JB_HEADER(jbp_) & JB_TMASK) == JB_TARRAY)
+#define JsonContainerIsScalar(jc)	(((jc)->header & JB_FSCALAR) != 0)
+#define JsonContainerIsObject(jc)	(((jc)->header & JB_FOBJECT) != 0)
+#define JsonContainerIsArray(jc)	(((jc)->header & JB_FARRAY) != 0)
 
 /* The top-level on-disk format for a jsonb datum. */
 typedef struct
