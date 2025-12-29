@@ -200,9 +200,20 @@ typedef struct JsonbContainer
 
 /* flags for the header-field in JsonbContainer */
 #define JB_CMASK				0x0FFFFFFF	/* mask for count field */
-#define JB_FSCALAR				0x10000000	/* flag bits */
-#define JB_FOBJECT				0x20000000
-#define JB_FARRAY				0x40000000
+#define JB_TMASK				0x70000000	/* mask for container type */
+/* container types */
+#define JB_TOBJECT				0x20000000	/* object with key-value pairs
+											 * sorted by key length-alpha */
+#define JB_TOBJECT_SORTED		0x30000000	/* object with keys sorted by
+											 * length-alpha; values sorted by
+											 * length */
+#define JB_TARRAY				0x40000000	/* array */
+#define JB_TSCALAR				0x50000000	/* scalar pseudo-array */
+#define JB_FSCALAR				0x50000000	/* scalar pseudo-array */
+
+/* flags for findJsonbValueFromContainer() */
+#define JB_FOBJECT				0x01
+#define JB_FARRAY				0x02
 
 /* convenience macros for accessing a JsonbContainer struct */
 #define JsonContainerSize(jc)		((jc)->header & JB_CMASK)
@@ -219,9 +230,10 @@ typedef struct
 
 /* convenience macros for accessing the root container in a Jsonb datum */
 #define JB_ROOT_COUNT(jbp_)		(*(uint32 *) VARDATA(jbp_) & JB_CMASK)
-#define JB_ROOT_IS_SCALAR(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_FSCALAR) != 0)
-#define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_FOBJECT) != 0)
-#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_FARRAY) != 0)
+#define JB_ROOT_IS_SCALAR(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TSCALAR)
+#define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TOBJECT)
+#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TSCALAR || \
+								 (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TARRAY)
 
 
 enum jbvType
@@ -375,6 +387,7 @@ typedef struct JsonbIterator
 	JEntry	   *children;		/* JEntrys for child nodes */
 	/* Data proper.  This points to the beginning of the variable-length data */
 	char	   *dataProper;
+	uint32	   *kvMap;
 
 	/* Current item in buffer (up to nElems) */
 	int			curIndex;
