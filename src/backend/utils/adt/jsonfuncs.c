@@ -520,7 +520,6 @@ pg_parse_json_or_errsave(JsonLexContext *lex, const JsonSemAction *sem,
 						 Node *escontext)
 {
 	JsonParseErrorType result;
-	elog(NOTICE, "==================pg_parse_json_or_errsave");
 	result = pg_parse_json(lex, sem);
 	if (result != JSON_SUCCESS)
 	{
@@ -543,7 +542,6 @@ makeJsonLexContext(JsonLexContext *lex, text *json, bool need_escapes)
 	 * Most callers pass a detoasted datum, but it's not clear that they all
 	 * do.  pg_detoast_datum_packed() is cheap insurance.
 	 */
-	elog(NOTICE, "==================makeJsonLexContext");
 	json = pg_detoast_datum_packed(json);
 
 	return makeJsonLexContextCstringLen(lex,
@@ -571,7 +569,6 @@ jsonb_object_keys(PG_FUNCTION_ARGS)
 	FuncCallContext *funcctx;
 	OkeysState *state;
 
-	elog(NOTICE, "==================jsonb_object_keys");
 	if (SRF_IS_FIRSTCALL())
 	{
 		MemoryContext oldcontext;
@@ -643,7 +640,6 @@ void
 json_errsave_error(JsonParseErrorType error, JsonLexContext *lex,
 				   Node *escontext)
 {
-	elog(NOTICE, "==================json_errsave_error");
 	if (error == JSON_UNICODE_HIGH_ESCAPE ||
 		error == JSON_UNICODE_UNTRANSLATABLE ||
 		error == JSON_UNICODE_CODE_POINT_ZERO)
@@ -687,7 +683,6 @@ report_json_context(JsonLexContext *lex)
 	const char *prefix;
 	const char *suffix;
 
-	elog(NOTICE, "==================report_json_context");
 	/* Choose boundaries for the part of the input we will display */
 	line_start = lex->line_start;
 	context_start = line_start;
@@ -738,7 +733,6 @@ json_object_keys(PG_FUNCTION_ARGS)
 	FuncCallContext *funcctx;
 	OkeysState *state;
 
-	elog(NOTICE, "==================json_object_keys");
 	if (SRF_IS_FIRSTCALL())
 	{
 		text	   *json = PG_GETARG_TEXT_PP(0);
@@ -792,7 +786,6 @@ okeys_object_field_start(void *state, char *fname, bool isnull)
 {
 	OkeysState *_state = (OkeysState *) state;
 
-	elog(NOTICE, "==================okeys_object_field_start");
 	/* only collecting keys for the top level object */
 	if (_state->lex->lex_level != 1)
 		return JSON_SUCCESS;
@@ -815,7 +808,6 @@ static JsonParseErrorType
 okeys_array_start(void *state)
 {
 	OkeysState *_state = (OkeysState *) state;
-	elog(NOTICE, "==================okeys_array_start");
 	/* top level must be a json object */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -831,7 +823,6 @@ okeys_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	OkeysState *_state = (OkeysState *) state;
 
-	elog(NOTICE, "==================okeys_scalar");
 	/* top level must be a json object */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -857,7 +848,6 @@ json_object_field(PG_FUNCTION_ARGS)
 	char	   *fnamestr = text_to_cstring(fname);
 	text	   *result;
 
-	elog(NOTICE, "=json_object_field");
 	result = get_worker(json, &fnamestr, NULL, 1, false);
 
 	if (result != NULL)
@@ -874,24 +864,18 @@ jsonb_object_field(PG_FUNCTION_ARGS)
 	JsonbValue *v;
 	JsonbValue	vbuf;
 
-	elog(NOTICE, "1=jsonb_object_field");
-	if (!JB_ROOT_IS_OBJECT(jb)){
-		elog(NOTICE, "NULL=jsonb_object_field");
+	if (!JB_ROOT_IS_OBJECT(jb))
 		PG_RETURN_NULL();
-	}
-	elog(NOTICE, "2=jsonb_object_field");
+
 	v = getKeyJsonValueFromContainer(&jb->root,
 									 VARDATA_ANY(key),
 									 VARSIZE_ANY_EXHDR(key),
 									 &vbuf);
 
-	elog(NOTICE, "3=jsonb_object_field");
-	if (v){
-		elog(NOTICE, "3=jsonb_object_field_Not_nULL");
+	if (v)
 		PG_RETURN_JSONB_P(JsonbValueToJsonb(v));
-	}else{
+	else
 		PG_RETURN_NULL();
-	}
 }
 
 Datum
@@ -902,7 +886,6 @@ json_object_field_text(PG_FUNCTION_ARGS)
 	char	   *fnamestr = text_to_cstring(fname);
 	text	   *result;
 
-	elog(NOTICE, "==================json_object_field_text");
 	result = get_worker(json, &fnamestr, NULL, 1, true);
 
 	if (result != NULL)
@@ -919,27 +902,16 @@ jsonb_object_field_text(PG_FUNCTION_ARGS)
 	JsonbValue *v;
 	JsonbValue	vbuf;
 
-	elog(NOTICE, "==================jsonb_object_field_text");
-
-	elog(NOTICE, "jsonb_object_field_text header = 0x%08x", jb->root.header);
-	elog(NOTICE, "jsonb_object_field_text header & JB_TMASK = 0x%08x", jb->root.header & JB_TMASK);
-	elog(NOTICE, "jsonb_object_field_text JB_TOBJECT = %d", (jb->root.header & JB_TMASK) == JB_TOBJECT);
-	elog(NOTICE, "jsonb_object_field_text JB_TOBJECT_SORTED = %d", (jb->root.header & JB_TMASK) == JB_TOBJECT_SORTED);
-	if (!JB_ROOT_IS_OBJECT(jb)){
-		elog(NOTICE, "NULL==================jsonb_object_field_text");
+	if (!JB_ROOT_IS_OBJECT(jb))
 		PG_RETURN_NULL();
-	}
+
 	v = getKeyJsonValueFromContainer(&jb->root,
 									 VARDATA_ANY(key),
 									 VARSIZE_ANY_EXHDR(key),
 									 &vbuf);
-	elog(NOTICE, "==================jsonb_object_field_text v != NULL =%d", (v != NULL));
-	elog(NOTICE, "==================jsonb_object_field_text v->type != jbvNull =%d", (v->type != jbvNull));
 
-	if (v != NULL && v->type != jbvNull){
-		elog(NOTICE, "Not_NULL==================jsonb_object_field_text");
+	if (v != NULL && v->type != jbvNull)
 		PG_RETURN_TEXT_P(JsonbValueAsText(v));
-	}
 
 	PG_RETURN_NULL();
 }
@@ -950,7 +922,6 @@ json_array_element(PG_FUNCTION_ARGS)
 	text	   *json = PG_GETARG_TEXT_PP(0);
 	int			element = PG_GETARG_INT32(1);
 	text	   *result;
-	elog(NOTICE, "==================json_array_element");
 	result = get_worker(json, NULL, &element, 1, false);
 
 	if (result != NULL)
@@ -966,7 +937,6 @@ jsonb_array_element(PG_FUNCTION_ARGS)
 	int			element = PG_GETARG_INT32(1);
 	JsonbValue *v;
 
-	elog(NOTICE, "==================jsonb_array_element");
 	if (!JB_ROOT_IS_ARRAY(jb))
 		PG_RETURN_NULL();
 
@@ -995,7 +965,6 @@ json_array_element_text(PG_FUNCTION_ARGS)
 	int			element = PG_GETARG_INT32(1);
 	text	   *result;
 
-	elog(NOTICE, "==================json_array_element_text");
 	result = get_worker(json, NULL, &element, 1, true);
 
 	if (result != NULL)
@@ -1011,7 +980,6 @@ jsonb_array_element_text(PG_FUNCTION_ARGS)
 	int			element = PG_GETARG_INT32(1);
 	JsonbValue *v;
 
-	elog(NOTICE, "==================jsonb_array_element_text");
 	if (!JB_ROOT_IS_ARRAY(jb))
 		PG_RETURN_NULL();
 
@@ -1062,7 +1030,6 @@ get_path_all(FunctionCallInfo fcinfo, bool as_text)
 	int		   *ipath;
 	int			i;
 
-	elog(NOTICE, "==================get_path_all");
 	/*
 	 * If the array contains any null elements, return NULL, on the grounds
 	 * that you'd have gotten NULL if any RHS value were NULL in a nested
@@ -1139,7 +1106,6 @@ get_worker(text *json,
 	JsonSemAction *sem = palloc0_object(JsonSemAction);
 	GetState   *state = palloc0_object(GetState);
 
-	elog(NOTICE, "==================get_worker");
 	Assert(npath >= 0);
 
 	state->lex = makeJsonLexContext(NULL, json, true);
@@ -1193,7 +1159,6 @@ get_object_start(void *state)
 	GetState   *_state = (GetState *) state;
 	int			lex_level = _state->lex->lex_level;
 
-	elog(NOTICE, "==================get_object_start");
 	if (lex_level == 0 && _state->npath == 0)
 	{
 		/*
@@ -1212,7 +1177,7 @@ get_object_end(void *state)
 {
 	GetState   *_state = (GetState *) state;
 	int			lex_level = _state->lex->lex_level;
-	elog(NOTICE, "==================get_object_end");
+
 	if (lex_level == 0 && _state->npath == 0)
 	{
 		/* Special case: return the entire object */
@@ -1231,7 +1196,7 @@ get_object_field_start(void *state, char *fname, bool isnull)
 	GetState   *_state = (GetState *) state;
 	bool		get_next = false;
 	int			lex_level = _state->lex->lex_level;
-	elog(NOTICE, "==================get_object_field_start");
+
 	if (lex_level <= _state->npath &&
 		_state->pathok[lex_level - 1] &&
 		_state->path_names != NULL &&
@@ -1278,7 +1243,7 @@ get_object_field_end(void *state, char *fname, bool isnull)
 	GetState   *_state = (GetState *) state;
 	bool		get_last = false;
 	int			lex_level = _state->lex->lex_level;
-	elog(NOTICE, "==================get_object_field_end");
+
 	/* same tests as in get_object_field_start */
 	if (lex_level <= _state->npath &&
 		_state->pathok[lex_level - 1] &&
@@ -1329,7 +1294,6 @@ get_array_start(void *state)
 	GetState   *_state = (GetState *) state;
 	int			lex_level = _state->lex->lex_level;
 
-	elog(NOTICE, "==================get_array_start");
 	if (lex_level < _state->npath)
 	{
 		/* Initialize counting of elements in this array */
@@ -1370,7 +1334,6 @@ get_array_end(void *state)
 	GetState   *_state = (GetState *) state;
 	int			lex_level = _state->lex->lex_level;
 
-	elog(NOTICE, "==================get_array_end");
 	if (lex_level == 0 && _state->npath == 0)
 	{
 		/* Special case: return the entire array */
@@ -1390,7 +1353,6 @@ get_array_element_start(void *state, bool isnull)
 	bool		get_next = false;
 	int			lex_level = _state->lex->lex_level;
 
-	elog(NOTICE, "==================get_array_element_start");
 	/* Update array element counter */
 	if (lex_level <= _state->npath)
 		_state->array_cur_index[lex_level - 1]++;
@@ -1439,7 +1401,6 @@ get_array_element_end(void *state, bool isnull)
 	bool		get_last = false;
 	int			lex_level = _state->lex->lex_level;
 
-	elog(NOTICE, "==================get_array_element_end");
 	/* same tests as in get_array_element_start */
 	if (lex_level <= _state->npath &&
 		_state->pathok[lex_level - 1] &&
@@ -1483,7 +1444,6 @@ get_scalar(void *state, char *token, JsonTokenType tokentype)
 	GetState   *_state = (GetState *) state;
 	int			lex_level = _state->lex->lex_level;
 
-	elog(NOTICE, "==================get_scalar");
 	/* Check for whole-object match */
 	if (lex_level == 0 && _state->npath == 0)
 	{
@@ -1544,7 +1504,6 @@ get_jsonb_path_all(FunctionCallInfo fcinfo, bool as_text)
 	int			npath;
 	Datum		res;
 
-	elog(NOTICE, "==================get_jsonb_path_all");
 	/*
 	 * If the array contains any null elements, return NULL, on the grounds
 	 * that you'd have gotten NULL if any RHS value were NULL in a nested
@@ -1576,7 +1535,6 @@ jsonb_get_element(Jsonb *jb, const Datum *path, int npath, bool *isnull, bool as
 
 	*isnull = false;
 
-	elog(NOTICE, "==================jsonb_get_element");
 	/* Identify whether we have object, array, or scalar at top-level */
 	if (JB_ROOT_IS_OBJECT(jb))
 		have_object = true;
@@ -1722,7 +1680,6 @@ jsonb_set_element(Jsonb *jb, const Datum *path, int path_len,
 	JsonbIterator *it;
 	bool	   *path_nulls = palloc0_array(bool, path_len);
 
-	elog(NOTICE, "==================jsonb_set_element");
 	if (newval->type == jbvArray && newval->val.array.rawScalar)
 		*newval = newval->val.array.elems[0];
 
@@ -1769,7 +1726,6 @@ push_path(JsonbInState *st, int level, const Datum *path_elems,
 	enum jbvType *tpath = palloc0_array(enum jbvType, path_len - level);
 	JsonbValue	newkey;
 
-	elog(NOTICE, "==================push_path");
 	/*
 	 * Create first part of the chain with beginning tokens. For the current
 	 * level WJB_BEGIN_OBJECT/WJB_BEGIN_ARRAY was already created, so start
@@ -1842,7 +1798,6 @@ push_path(JsonbInState *st, int level, const Datum *path_elems,
 static text *
 JsonbValueAsText(JsonbValue *v)
 {
-	elog(NOTICE, "==================JsonbValueAsText");
 	switch (v->type)
 	{
 		case jbvNull:
@@ -1895,7 +1850,6 @@ json_array_length(PG_FUNCTION_ARGS)
 	JsonLexContext lex;
 	JsonSemAction *sem;
 
-	elog(NOTICE, "==================json_array_length");
 	state = palloc0_object(AlenState);
 	state->lex = makeJsonLexContext(&lex, json, false);
 	/* palloc0 does this for us */
@@ -1919,7 +1873,6 @@ jsonb_array_length(PG_FUNCTION_ARGS)
 {
 	Jsonb	   *jb = PG_GETARG_JSONB_P(0);
 
-	elog(NOTICE, "==================jsonb_array_length");
 	if (JB_ROOT_IS_SCALAR(jb))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1942,7 +1895,6 @@ alen_object_start(void *state)
 {
 	AlenState  *_state = (AlenState *) state;
 
-	elog(NOTICE, "==================alen_object_start");
 	/* json structure check */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -1957,7 +1909,6 @@ alen_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	AlenState  *_state = (AlenState *) state;
 
-	elog(NOTICE, "==================alen_scalar");
 	/* json structure check */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -1971,7 +1922,6 @@ static JsonParseErrorType
 alen_array_element_start(void *state, bool isnull)
 {
 	AlenState  *_state = (AlenState *) state;
-	elog(NOTICE, "==================alen_array_element_start");
 	/* just count up all the level 1 elements */
 	if (_state->lex->lex_level == 1)
 		_state->count++;
@@ -2025,7 +1975,6 @@ each_worker_jsonb(FunctionCallInfo fcinfo, const char *funcname, bool as_text)
 	JsonbValue	v;
 	JsonbIteratorToken r;
 
-	elog(NOTICE, "==================each_worker_jsonb");
 	if (!JB_ROOT_IS_OBJECT(jb))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -2107,7 +2056,6 @@ each_worker(FunctionCallInfo fcinfo, bool as_text)
 	ReturnSetInfo *rsi;
 	EachState  *state;
 
-	elog(NOTICE, "==================each_worker");
 	state = palloc0_object(EachState);
 	sem = palloc0_object(JsonSemAction);
 
@@ -2144,7 +2092,6 @@ each_object_field_start(void *state, char *fname, bool isnull)
 {
 	EachState  *_state = (EachState *) state;
 
-	elog(NOTICE, "==================each_object_field_start");
 	/* save a pointer to where the value starts */
 	if (_state->lex->lex_level == 1)
 	{
@@ -2173,7 +2120,6 @@ each_object_field_end(void *state, char *fname, bool isnull)
 	Datum		values[2];
 	bool		nulls[2] = {false, false};
 
-	elog(NOTICE, "==================each_object_field_end");
 	/* skip over nested objects */
 	if (_state->lex->lex_level != 1)
 		return JSON_SUCCESS;
@@ -2216,7 +2162,6 @@ each_array_start(void *state)
 {
 	EachState  *_state = (EachState *) state;
 
-	elog(NOTICE, "==================each_array_start");
 	/* json structure check */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -2231,7 +2176,6 @@ each_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	EachState  *_state = (EachState *) state;
 
-	elog(NOTICE, "==================each_scalar");
 	/* json structure check */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -2278,7 +2222,6 @@ elements_worker_jsonb(FunctionCallInfo fcinfo, const char *funcname,
 	JsonbValue	v;
 	JsonbIteratorToken r;
 
-	elog(NOTICE, "==================elements_worker_jsonb");
 	if (JB_ROOT_IS_SCALAR(jb))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -2363,7 +2306,6 @@ elements_worker(FunctionCallInfo fcinfo, const char *funcname, bool as_text)
 	ReturnSetInfo *rsi;
 	ElementsState *state;
 
-	elog(NOTICE, "==================elements_worker");
 	/* elements only needs escaped strings when as_text */
 	makeJsonLexContext(&lex, json, as_text);
 
@@ -2402,7 +2344,6 @@ elements_array_element_start(void *state, bool isnull)
 {
 	ElementsState *_state = (ElementsState *) state;
 
-	elog(NOTICE, "==================elements_array_element_start");
 	/* save a pointer to where the value starts */
 	if (_state->lex->lex_level == 1)
 	{
@@ -2431,7 +2372,6 @@ elements_array_element_end(void *state, bool isnull)
 	Datum		values[1];
 	bool		nulls[1] = {false};
 
-	elog(NOTICE, "==================elements_array_element_end");
 	/* skip over nested objects */
 	if (_state->lex->lex_level != 1)
 		return JSON_SUCCESS;
@@ -2472,7 +2412,6 @@ elements_object_start(void *state)
 {
 	ElementsState *_state = (ElementsState *) state;
 
-	elog(NOTICE, "==================elements_object_start");
 	/* json structure check */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -2488,7 +2427,6 @@ elements_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	ElementsState *_state = (ElementsState *) state;
 
-	elog(NOTICE, "==================elements_scalar");
 	/* json structure check */
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
@@ -2564,7 +2502,6 @@ json_to_record(PG_FUNCTION_ARGS)
 static void
 populate_array_report_expected_array(PopulateArrayContext *ctx, int ndim)
 {
-	elog(NOTICE, "==================populate_array_report_expected_array");
 	if (ndim <= 0)
 	{
 		if (ctx->colname)
@@ -2616,7 +2553,6 @@ static bool
 populate_array_assign_ndims(PopulateArrayContext *ctx, int ndims)
 {
 	int			i;
-	elog(NOTICE, "==================populate_array_assign_ndims");
 	Assert(ctx->ndims <= 0);
 
 	if (ndims <= 0)
@@ -2646,7 +2582,6 @@ static bool
 populate_array_check_dimension(PopulateArrayContext *ctx, int ndim)
 {
 	int			dim = ctx->sizes[ndim]; /* current dimension counter */
-	elog(NOTICE, "==================populate_array_check_dimension");
 	if (ctx->dims[ndim] == -1)
 		ctx->dims[ndim] = dim;	/* assign dimension if not yet known */
 	else if (ctx->dims[ndim] != dim)
@@ -2676,7 +2611,6 @@ populate_array_element(PopulateArrayContext *ctx, int ndim, JsValue *jsv)
 	Datum		element;
 	bool		element_isnull;
 
-	elog(NOTICE, "==================populate_array_element");
 	/* populate the array element */
 	element = populate_record_field(ctx->aio->element_info,
 									ctx->aio->element_type,
@@ -2704,7 +2638,6 @@ populate_array_object_start(void *_state)
 	PopulateArrayState *state = (PopulateArrayState *) _state;
 	int			ndim = state->lex->lex_level;
 
-	elog(NOTICE, "==================populate_array_object_start");
 	if (state->ctx->ndims <= 0)
 	{
 		if (!populate_array_assign_ndims(state->ctx, ndim))
@@ -2729,7 +2662,6 @@ populate_array_array_end(void *_state)
 	PopulateArrayContext *ctx = state->ctx;
 	int			ndim = state->lex->lex_level;
 
-	elog(NOTICE, "==================populate_array_array_end");
 	if (ctx->ndims <= 0)
 	{
 		if (!populate_array_assign_ndims(ctx, ndim + 1))
@@ -2752,7 +2684,7 @@ populate_array_element_start(void *_state, bool isnull)
 {
 	PopulateArrayState *state = (PopulateArrayState *) _state;
 	int			ndim = state->lex->lex_level;
-	elog(NOTICE, "==================populate_array_element_start");
+
 	if (state->ctx->ndims <= 0 || ndim == state->ctx->ndims)
 	{
 		/* remember current array element start */
@@ -2772,7 +2704,6 @@ populate_array_element_end(void *_state, bool isnull)
 	PopulateArrayContext *ctx = state->ctx;
 	int			ndim = state->lex->lex_level;
 
-	elog(NOTICE, "==================populate_array_element_end");
 	Assert(ctx->ndims > 0);
 
 	if (ndim == ctx->ndims)
@@ -2816,7 +2747,6 @@ populate_array_scalar(void *_state, char *token, JsonTokenType tokentype)
 	PopulateArrayContext *ctx = state->ctx;
 	int			ndim = state->lex->lex_level;
 
-	elog(NOTICE, "==================populate_array_scalar");
 	if (ctx->ndims <= 0)
 	{
 		if (!populate_array_assign_ndims(ctx, ndim))
@@ -2852,7 +2782,6 @@ populate_array_json(PopulateArrayContext *ctx, const char *json, int len)
 	PopulateArrayState state;
 	JsonSemAction sem;
 
-	elog(NOTICE, "==================populate_array_json");
 	state.lex = makeJsonLexContextCstringLen(NULL, json, len,
 											 GetDatabaseEncoding(), true);
 	state.ctx = ctx;
@@ -2894,7 +2823,6 @@ populate_array_dim_jsonb(PopulateArrayContext *ctx, /* context */
 	JsonbValue	val;
 	JsValue		jsv;
 
-	elog(NOTICE, "==================populate_array_dim_jsonb");
 	check_stack_depth();
 
 	/* Even scalars can end up here thanks to ExecEvalJsonCoercion(). */
@@ -2987,7 +2915,6 @@ populate_array(ArrayIOData *aio,
 	int		   *lbs;
 	int			i;
 
-	elog(NOTICE, "==================populate_array");
 	ctx.aio = aio;
 	ctx.mcxt = mcxt;
 	ctx.acxt = CurrentMemoryContext;
@@ -3045,7 +2972,6 @@ populate_array(ArrayIOData *aio,
 static bool
 JsValueToJsObject(JsValue *jsv, JsObject *jso, Node *escontext)
 {
-	elog(NOTICE, "==================JsValueToJsObject");
 	jso->is_json = jsv->is_json;
 
 	if (jsv->is_json)
@@ -3093,7 +3019,6 @@ JsValueToJsObject(JsValue *jsv, JsObject *jso, Node *escontext)
 static void
 update_cached_tupdesc(CompositeIOData *io, MemoryContext mcxt)
 {
-	elog(NOTICE, "==================update_cached_tupdesc");
 	if (!io->tupdesc ||
 		io->tupdesc->tdtypeid != io->base_typid ||
 		io->tupdesc->tdtypmod != io->base_typmod)
@@ -3132,7 +3057,6 @@ populate_composite(CompositeIOData *io,
 {
 	Datum		result;
 
-	elog(NOTICE, "==================populate_composite");
 	/* acquire/update cached tuple descriptor */
 	update_cached_tupdesc(io, mcxt);
 
@@ -3196,7 +3120,6 @@ populate_scalar(ScalarIOData *io, Oid typid, int32 typmod, JsValue *jsv,
 	char	   *str = NULL;
 	const char *json = NULL;
 
-	elog(NOTICE, "==================populate_scalar");
 	if (jsv->is_json)
 	{
 		int			len = jsv->val.json.len;
@@ -3293,7 +3216,6 @@ populate_domain(DomainIOData *io,
 {
 	Datum		res;
 
-	elog(NOTICE, "==================populate_domain");
 	if (*isnull)
 		res = (Datum) 0;
 	else
@@ -3326,7 +3248,6 @@ prepare_column_cache(ColumnIOData *column,
 	HeapTuple	tup;
 	Form_pg_type type;
 
-	elog(NOTICE, "==================prepare_column_cache");
 	column->typid = typid;
 	column->typmod = typmod;
 
@@ -3421,7 +3342,6 @@ json_populate_type(Datum json_val, Oid json_type,
 	JsValue		jsv = {0};
 	JsonbValue	jbv;
 
-	elog(NOTICE, "==================json_populate_type");
 	jsv.is_json = json_type == JSONOID;
 
 	if (*isnull)
@@ -3487,7 +3407,6 @@ populate_record_field(ColumnIOData *col,
 {
 	TypeCat		typcat;
 
-	elog(NOTICE, "==================populate_record_field");
 	check_stack_depth();
 
 	/*
@@ -3551,7 +3470,6 @@ allocate_record_info(MemoryContext mcxt, int ncolumns)
 		MemoryContextAlloc(mcxt,
 						   offsetof(RecordIOData, columns) +
 						   ncolumns * sizeof(ColumnIOData));
-	elog(NOTICE, "==================allocate_record_info");
 	data->record_type = InvalidOid;
 	data->record_typmod = 0;
 	data->ncolumns = ncolumns;
@@ -3563,7 +3481,6 @@ allocate_record_info(MemoryContext mcxt, int ncolumns)
 static bool
 JsObjectGetField(JsObject *obj, char *field, JsValue *jsv)
 {
-	elog(NOTICE, "==================JsObjectGetField");
 	jsv->is_json = obj->is_json;
 
 	if (jsv->is_json)
@@ -3604,7 +3521,6 @@ populate_record(TupleDesc tupdesc,
 	int			ncolumns = tupdesc->natts;
 	int			i;
 
-	elog(NOTICE, "==================populate_record");
 	/*
 	 * if the input json is empty, we can only skip the rest if we were passed
 	 * in a non-null record, since otherwise there may be issues with domain
@@ -3740,7 +3656,6 @@ get_record_type_from_query(FunctionCallInfo fcinfo,
 	TupleDesc	tupdesc;
 	MemoryContext old_cxt;
 
-	elog(NOTICE, "==================get_record_type_from_query");
 	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -3784,7 +3699,6 @@ populate_record_worker(FunctionCallInfo fcinfo, const char *funcname,
 	MemoryContext fnmcxt = fcinfo->flinfo->fn_mcxt;
 	PopulateRecordCache *cache = fcinfo->flinfo->fn_extra;
 
-	elog(NOTICE, "==================populate_record_worker");
 	/*
 	 * If first time through, identify input/result record type.  Note that
 	 * this stanza looks only at fcinfo context, which can't change during the
@@ -3892,7 +3806,6 @@ get_json_object_as_hash(const char *json, int len, const char *funcname,
 	JHashState *state;
 	JsonSemAction *sem;
 
-	elog(NOTICE, "==================get_json_object_as_hash");
 	ctl.keysize = NAMEDATALEN;
 	ctl.entrysize = sizeof(JsonHashEntry);
 	ctl.hcxt = CurrentMemoryContext;
@@ -3930,7 +3843,6 @@ static JsonParseErrorType
 hash_object_field_start(void *state, char *fname, bool isnull)
 {
 	JHashState *_state = (JHashState *) state;
-	elog(NOTICE, "==================hash_object_field_start");
 	if (_state->lex->lex_level > 1)
 		return JSON_SUCCESS;
 
@@ -3958,7 +3870,6 @@ hash_object_field_end(void *state, char *fname, bool isnull)
 	JHashState *_state = (JHashState *) state;
 	JsonHashEntry *hashentry;
 	bool		found;
-	elog(NOTICE, "==================hash_object_field_end");
 	/*
 	 * Ignore nested fields.
 	 */
@@ -4007,7 +3918,6 @@ static JsonParseErrorType
 hash_array_start(void *state)
 {
 	JHashState *_state = (JHashState *) state;
-	elog(NOTICE, "==================hash_array_start");
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -4020,7 +3930,6 @@ static JsonParseErrorType
 hash_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	JHashState *_state = (JHashState *) state;
-	elog(NOTICE, "==================hash_scalar");
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -4082,7 +3991,6 @@ populate_recordset_record(PopulateRecordsetState *state, JsObject *obj)
 	HeapTupleHeader tuphead;
 	HeapTupleData tuple;
 
-	elog(NOTICE, "==================populate_recordset_record");
 	/* acquire/update cached tuple descriptor */
 	update_cached_tupdesc(&cache->c.io.composite, cache->fn_mcxt);
 
@@ -4126,7 +4034,6 @@ populate_recordset_worker(FunctionCallInfo fcinfo, const char *funcname,
 	PopulateRecordCache *cache = fcinfo->flinfo->fn_extra;
 	PopulateRecordsetState *state;
 
-	elog(NOTICE, "==================populate_recordset_worker");
 	rsi = (ReturnSetInfo *) fcinfo->resultinfo;
 
 	if (!rsi || !IsA(rsi, ReturnSetInfo))
@@ -4297,7 +4204,6 @@ populate_recordset_object_start(void *state)
 	int			lex_level = _state->lex->lex_level;
 	HASHCTL		ctl;
 
-	elog(NOTICE, "==================populate_recordset_object_start");
 	/* Reject object at top level: we must have an array at level 0 */
 	if (lex_level == 0)
 		ereport(ERROR,
@@ -4327,7 +4233,6 @@ populate_recordset_object_end(void *state)
 	PopulateRecordsetState *_state = (PopulateRecordsetState *) state;
 	JsObject	obj;
 
-	elog(NOTICE, "==================populate_recordset_object_end");
 	/* Nested objects require no special processing */
 	if (_state->lex->lex_level > 1)
 		return JSON_SUCCESS;
@@ -4350,7 +4255,6 @@ populate_recordset_array_element_start(void *state, bool isnull)
 {
 	PopulateRecordsetState *_state = (PopulateRecordsetState *) state;
 
-	elog(NOTICE, "==================populate_recordset_array_element_start");
 	if (_state->lex->lex_level == 1 &&
 		_state->lex->token_type != JSON_TOKEN_OBJECT_START)
 		ereport(ERROR,
@@ -4373,7 +4277,6 @@ populate_recordset_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	PopulateRecordsetState *_state = (PopulateRecordsetState *) state;
 
-	elog(NOTICE, "==================populate_recordset_scalar");
 	if (_state->lex->lex_level == 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -4391,7 +4294,6 @@ populate_recordset_object_field_start(void *state, char *fname, bool isnull)
 {
 	PopulateRecordsetState *_state = (PopulateRecordsetState *) state;
 
-	elog(NOTICE, "==================populate_recordset_object_field_start");
 	if (_state->lex->lex_level > 2)
 		return JSON_SUCCESS;
 
@@ -4417,7 +4319,6 @@ populate_recordset_object_field_end(void *state, char *fname, bool isnull)
 	JsonHashEntry *hashentry;
 	bool		found;
 
-	elog(NOTICE, "==================populate_recordset_object_field_end");
 	/*
 	 * Ignore nested fields.
 	 */
@@ -4516,7 +4417,6 @@ sn_object_field_start(void *state, char *fname, bool isnull)
 {
 	StripnullState *_state = (StripnullState *) state;
 
-	elog(NOTICE, "==================sn_object_field_start");
 	if (isnull)
 	{
 		/*
@@ -4547,7 +4447,6 @@ sn_array_element_start(void *state, bool isnull)
 {
 	StripnullState *_state = (StripnullState *) state;
 
-	elog(NOTICE, "==================sn_array_element_start");
 	/* If strip_in_arrays is enabled and this is a null, mark it for skipping */
 	if (isnull && _state->strip_in_arrays)
 	{
@@ -4570,7 +4469,6 @@ sn_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	StripnullState *_state = (StripnullState *) state;
 
-	elog(NOTICE, "==================sn_scalar");
 	if (_state->skip_next_null)
 	{
 		Assert(tokentype == JSON_TOKEN_NULL);
@@ -4599,7 +4497,6 @@ json_strip_nulls(PG_FUNCTION_ARGS)
 	JsonLexContext lex;
 	JsonSemAction *sem;
 
-	elog(NOTICE, "==================json_strip_nulls");
 	state = palloc0_object(StripnullState);
 	sem = palloc0_object(JsonSemAction);
 	initStringInfo(&strbuf);
@@ -4639,7 +4536,6 @@ jsonb_strip_nulls(PG_FUNCTION_ARGS)
 	JsonbIteratorToken type;
 	bool		last_was_key = false;
 
-	elog(NOTICE, "==================jsonb_strip_nulls");
 	if (PG_NARGS() == 2)
 		strip_in_arrays = PG_GETARG_BOOL(1);
 
@@ -4698,7 +4594,6 @@ jsonb_pretty(PG_FUNCTION_ARGS)
 	Jsonb	   *jb = PG_GETARG_JSONB_P(0);
 	StringInfoData str;
 
-	elog(NOTICE, "==================jsonb_pretty");
 	initStringInfo(&str);
 	JsonbToCStringIndent(&str, &jb->root, VARSIZE(jb));
 
@@ -4719,7 +4614,6 @@ jsonb_concat(PG_FUNCTION_ARGS)
 	JsonbIterator *it1,
 			   *it2;
 
-	elog(NOTICE, "==================jsonb_concat");
 	/*
 	 * If one of the jsonb is empty, just return the other if it's not scalar
 	 * and both are of the same kind.  If it's a scalar or they are of
@@ -4762,7 +4656,6 @@ jsonb_delete(PG_FUNCTION_ARGS)
 	bool		skipNested = false;
 	JsonbIteratorToken r;
 
-	elog(NOTICE, "==================jsonb_delete");
 	if (JB_ROOT_IS_SCALAR(in))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -4814,7 +4707,6 @@ jsonb_delete_array(PG_FUNCTION_ARGS)
 	bool		skipNested = false;
 	JsonbIteratorToken r;
 
-	elog(NOTICE, "==================jsonb_delete_array");
 	if (ARR_NDIM(keys) > 1)
 		ereport(ERROR,
 				(errcode(ERRCODE_ARRAY_SUBSCRIPT_ERROR),
@@ -4897,7 +4789,6 @@ jsonb_delete_idx(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	JsonbIteratorToken r;
 
-	elog(NOTICE, "==================jsonb_delete_idx");
 	if (JB_ROOT_IS_SCALAR(in))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -4961,7 +4852,6 @@ jsonb_set(PG_FUNCTION_ARGS)
 	JsonbIterator *it;
 	JsonbInState st = {0};
 
-	elog(NOTICE, "==================jsonb_set");
 	JsonbToJsonbValue(newjsonb, &newval);
 
 	if (ARR_NDIM(path) > 1)
@@ -5004,7 +4894,6 @@ jsonb_set_lax(PG_FUNCTION_ARGS)
 	text	   *handle_null;
 	char	   *handle_val;
 
-	elog(NOTICE, "==================jsonb_set_lax");
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(3))
 		PG_RETURN_NULL();
 
@@ -5073,7 +4962,6 @@ jsonb_delete_path(PG_FUNCTION_ARGS)
 	JsonbIterator *it;
 	JsonbInState st = {0};
 
-	elog(NOTICE, "==================jsonb_delete_path");
 	if (ARR_NDIM(path) > 1)
 		ereport(ERROR,
 				(errcode(ERRCODE_ARRAY_SUBSCRIPT_ERROR),
@@ -5117,7 +5005,6 @@ jsonb_insert(PG_FUNCTION_ARGS)
 	JsonbIterator *it;
 	JsonbInState st = {0};
 
-	elog(NOTICE, "==================jsonb_insert");
 	JsonbToJsonbValue(newjsonb, &newval);
 
 	if (ARR_NDIM(path) > 1)
@@ -5161,7 +5048,7 @@ IteratorConcat(JsonbIterator **it1, JsonbIterator **it2,
 				rk1,
 				rk2;
 
-	elog(NOTICE, "==================IteratorConcat");
+
 	rk1 = JsonbIteratorNext(it1, &v1, false);
 	rk2 = JsonbIteratorNext(it2, &v2, false);
 
@@ -5284,7 +5171,6 @@ setPath(JsonbIterator **it, const Datum *path_elems,
 	JsonbValue	v;
 	JsonbIteratorToken r;
 
-	elog(NOTICE, "==================setPath");
 	check_stack_depth();
 
 	if (path_nulls[level])
@@ -5366,7 +5252,6 @@ setPathObject(JsonbIterator **it, const Datum *path_elems, const bool *path_null
 				v;
 	bool		done = false;
 
-	elog(NOTICE, "==================setPathObject");
 	if (level >= path_len || path_nulls[level])
 		done = true;
 	else
@@ -5504,7 +5389,6 @@ setPathArray(JsonbIterator **it, const Datum *path_elems, const bool *path_nulls
 				i;
 	bool		done = false;
 
-	elog(NOTICE, "==================setPathArray");
 	/* pick correct index */
 	if (level < path_len && !path_nulls[level])
 	{
@@ -5673,7 +5557,6 @@ parse_jsonb_index_flags(Jsonb *jb)
 	JsonbIteratorToken type;
 	uint32		flags = 0;
 
-	elog(NOTICE, "==================parse_jsonb_index_flags");
 	it = JsonbIteratorInit(&jb->root);
 
 	type = JsonbIteratorNext(&it, &v, false);
@@ -5742,7 +5625,6 @@ iterate_jsonb_values(Jsonb *jb, uint32 flags, void *state,
 	JsonbValue	v;
 	JsonbIteratorToken type;
 
-	elog(NOTICE, "==================iterate_jsonb_values");
 	it = JsonbIteratorInit(&jb->root);
 
 	/*
@@ -5811,7 +5693,6 @@ iterate_json_values(text *json, uint32 flags, void *action_state,
 	JsonSemAction *sem = palloc0_object(JsonSemAction);
 	IterateJsonStringValuesState *state = palloc0_object(IterateJsonStringValuesState);
 
-	elog(NOTICE, "==================iterate_json_values");
 	state->lex = makeJsonLexContext(&lex, json, true);
 	state->action = action;
 	state->action_state = action_state;
@@ -5834,7 +5715,6 @@ iterate_values_scalar(void *state, char *token, JsonTokenType tokentype)
 {
 	IterateJsonStringValuesState *_state = (IterateJsonStringValuesState *) state;
 
-	elog(NOTICE, "==================iterate_values_scalar");
 	switch (tokentype)
 	{
 		case JSON_TOKEN_STRING:
@@ -5863,7 +5743,6 @@ iterate_values_object_field_start(void *state, char *fname, bool isnull)
 {
 	IterateJsonStringValuesState *_state = (IterateJsonStringValuesState *) state;
 
-	elog(NOTICE, "==================iterate_values_object_field_start");
 	if (_state->flags & jtiKey)
 	{
 		char	   *val = pstrdup(fname);
@@ -5891,7 +5770,6 @@ transform_jsonb_string_values(Jsonb *jsonb, void *action_state,
 	text	   *out;
 	bool		is_scalar = false;
 
-	elog(NOTICE, "==================transform_jsonb_string_values");
 	it = JsonbIteratorInit(&jsonb->root);
 	is_scalar = it->isScalar;
 
@@ -5936,7 +5814,6 @@ transform_json_string_values(text *json, void *action_state,
 	TransformJsonStringValuesState *state = palloc0_object(TransformJsonStringValuesState);
 	StringInfoData strbuf;
 
-	elog(NOTICE, "==================transform_json_string_values");
 	initStringInfo(&strbuf);
 
 	state->lex = makeJsonLexContext(&lex, json, true);
@@ -6009,7 +5886,6 @@ transform_string_values_object_field_start(void *state, char *fname, bool isnull
 {
 	TransformJsonStringValuesState *_state = (TransformJsonStringValuesState *) state;
 
-	elog(NOTICE, "==================transform_string_values_object_field_start");
 	if (_state->strval->data[_state->strval->len - 1] != '{')
 		appendStringInfoCharMacro(_state->strval, ',');
 
@@ -6028,7 +5904,6 @@ transform_string_values_array_element_start(void *state, bool isnull)
 {
 	TransformJsonStringValuesState *_state = (TransformJsonStringValuesState *) state;
 
-	elog(NOTICE, "==================transform_string_values_array_element_start");
 	if (_state->strval->data[_state->strval->len - 1] != '[')
 		appendStringInfoCharMacro(_state->strval, ',');
 
@@ -6040,7 +5915,6 @@ transform_string_values_scalar(void *state, char *token, JsonTokenType tokentype
 {
 	TransformJsonStringValuesState *_state = (TransformJsonStringValuesState *) state;
 
-	elog(NOTICE, "==================transform_string_values_scalar");
 	if (tokentype == JSON_TOKEN_STRING)
 	{
 		text	   *out = _state->action(_state->action_state, token, strlen(token));
@@ -6059,7 +5933,6 @@ json_get_first_token(text *json, bool throw_error)
 	JsonLexContext lex;
 	JsonParseErrorType result;
 
-	elog(NOTICE, "==================json_get_first_token");
 	makeJsonLexContext(&lex, json, false);
 
 	/* Lex exactly one token from the input and check its type. */
@@ -6087,7 +5960,6 @@ json_categorize_type(Oid typoid, bool is_jsonb,
 {
 	bool		typisvarlena;
 
-	elog(NOTICE, "==================json_categorize_type");
 	/* Look through any domain */
 	typoid = getBaseType(typoid);
 

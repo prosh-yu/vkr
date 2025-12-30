@@ -212,9 +212,10 @@ typedef struct JsonbContainer
 #define JB_FSCALAR				0x50000000	/* scalar pseudo-array */
 
 /* flags for findJsonbValueFromContainer() */
-#define JB_FOBJECT				0x01
-#define JB_FARRAY				0x02
-
+//#define JB_FOBJECT				0x01
+//#define JB_FARRAY				0x02
+#define JB_FOBJECT				0x20000000
+#define JB_FARRAY				0x40000000
 /* convenience macros for accessing a JsonbContainer struct */
 #define JsonContainerSize(jc)		((jc)->header & JB_CMASK)
 #define JsonContainerIsScalar(jc)	(((jc)->header & JB_FSCALAR) != 0)
