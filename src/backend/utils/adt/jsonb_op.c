@@ -24,7 +24,7 @@ jsonb_exists(PG_FUNCTION_ARGS)
 	text	   *key = PG_GETARG_TEXT_PP(1);
 	JsonbValue	kval;
 	JsonbValue *v = NULL;
-
+	elog(NOTICE, "==================jsonb_exists");
 	/*
 	 * We only match Object keys (which are naturally always Strings), or
 	 * string elements in arrays.  In particular, we do not match non-string
@@ -51,7 +51,7 @@ jsonb_exists_any(PG_FUNCTION_ARGS)
 	Datum	   *key_datums;
 	bool	   *key_nulls;
 	int			elem_count;
-
+	elog(NOTICE, "==================jsonb_exists_any");
 	deconstruct_array_builtin(keys, TEXTOID, &key_datums, &key_nulls, &elem_count);
 
 	for (i = 0; i < elem_count; i++)
@@ -84,7 +84,7 @@ jsonb_exists_all(PG_FUNCTION_ARGS)
 	Datum	   *key_datums;
 	bool	   *key_nulls;
 	int			elem_count;
-
+	elog(NOTICE, "==================jsonb_exists_all");
 	deconstruct_array_builtin(keys, TEXTOID, &key_datums, &key_nulls, &elem_count);
 
 	for (i = 0; i < elem_count; i++)
@@ -116,7 +116,7 @@ jsonb_contains(PG_FUNCTION_ARGS)
 
 	JsonbIterator *it1,
 			   *it2;
-
+	elog(NOTICE, "==================jsonb_contains");
 	if (JB_ROOT_IS_OBJECT(val) != JB_ROOT_IS_OBJECT(tmpl))
 		PG_RETURN_BOOL(false);
 
@@ -135,6 +135,7 @@ jsonb_contained(PG_FUNCTION_ARGS)
 
 	JsonbIterator *it1,
 			   *it2;
+	elog(NOTICE, "==================jsonb_contained");
 
 	if (JB_ROOT_IS_OBJECT(val) != JB_ROOT_IS_OBJECT(tmpl))
 		PG_RETURN_BOOL(false);
@@ -151,7 +152,7 @@ jsonb_ne(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	bool		res;
-
+	elog(NOTICE, "==================jsonb_ne");
 	res = (compareJsonbContainers(&jba->root, &jbb->root) != 0);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -168,7 +169,7 @@ jsonb_lt(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	bool		res;
-
+	elog(NOTICE, "==================jsonb_lt");
 	res = (compareJsonbContainers(&jba->root, &jbb->root) < 0);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -182,7 +183,7 @@ jsonb_gt(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	bool		res;
-
+	elog(NOTICE, "==================jsonb_gt");
 	res = (compareJsonbContainers(&jba->root, &jbb->root) > 0);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -196,7 +197,7 @@ jsonb_le(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	bool		res;
-
+	elog(NOTICE, "==================jsonb_le");
 	res = (compareJsonbContainers(&jba->root, &jbb->root) <= 0);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -210,7 +211,7 @@ jsonb_ge(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	bool		res;
-
+	elog(NOTICE, "==================jsonb_ge");
 	res = (compareJsonbContainers(&jba->root, &jbb->root) >= 0);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -224,7 +225,7 @@ jsonb_eq(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	bool		res;
-
+	elog(NOTICE, "==================jsonb_eq");
 	res = (compareJsonbContainers(&jba->root, &jbb->root) == 0);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -238,7 +239,7 @@ jsonb_cmp(PG_FUNCTION_ARGS)
 	Jsonb	   *jba = PG_GETARG_JSONB_P(0);
 	Jsonb	   *jbb = PG_GETARG_JSONB_P(1);
 	int			res;
-
+	elog(NOTICE, "==================jsonb_cmp");
 	res = compareJsonbContainers(&jba->root, &jbb->root);
 
 	PG_FREE_IF_COPY(jba, 0);
@@ -257,7 +258,7 @@ jsonb_hash(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	JsonbIteratorToken r;
 	uint32		hash = 0;
-
+	elog(NOTICE, "==================jsonb_hash");
 	if (JB_ROOT_COUNT(jb) == 0)
 		PG_RETURN_INT32(0);
 
@@ -269,10 +270,10 @@ jsonb_hash(PG_FUNCTION_ARGS)
 		{
 				/* Rotation is left to JsonbHashScalarValue() */
 			case WJB_BEGIN_ARRAY:
-				hash ^= JB_FARRAY;
+				hash ^= JB_TARRAY;
 				break;
 			case WJB_BEGIN_OBJECT:
-				hash ^= JB_FOBJECT;
+				hash ^= JB_TOBJECT;
 				break;
 			case WJB_KEY:
 			case WJB_VALUE:
@@ -300,7 +301,7 @@ jsonb_hash_extended(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	JsonbIteratorToken r;
 	uint64		hash = 0;
-
+	elog(NOTICE, "==================jsonb_hash_extended");
 	if (JB_ROOT_COUNT(jb) == 0)
 		PG_RETURN_UINT64(seed);
 
@@ -312,10 +313,10 @@ jsonb_hash_extended(PG_FUNCTION_ARGS)
 		{
 				/* Rotation is left to JsonbHashScalarValueExtended() */
 			case WJB_BEGIN_ARRAY:
-				hash ^= ((uint64) JB_FARRAY) << 32 | JB_FARRAY;
+				hash ^= ((uint64) JB_TARRAY) << 32 | JB_TARRAY;
 				break;
 			case WJB_BEGIN_OBJECT:
-				hash ^= ((uint64) JB_FOBJECT) << 32 | JB_FOBJECT;
+				hash ^= ((uint64) JB_TOBJECT) << 32 | JB_TOBJECT;
 				break;
 			case WJB_KEY:
 			case WJB_VALUE:

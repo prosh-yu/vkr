@@ -218,8 +218,9 @@ typedef struct JsonbContainer
 /* convenience macros for accessing a JsonbContainer struct */
 #define JsonContainerSize(jc)		((jc)->header & JB_CMASK)
 #define JsonContainerIsScalar(jc)	(((jc)->header & JB_FSCALAR) != 0)
-#define JsonContainerIsObject(jc)	(((jc)->header & JB_FOBJECT) != 0)
-#define JsonContainerIsArray(jc)	(((jc)->header & JB_FARRAY) != 0)
+#define JsonContainerIsObject(jc)	(((jc)->header & JB_TOBJECT) != 0 || \
+									((jc)->header & JB_TOBJECT_SORTED) != 0 )
+#define JsonContainerIsArray(jc)	(((jc)->header & JB_TARRAY) != 0)
 
 /* The top-level on-disk format for a jsonb datum. */
 typedef struct
@@ -229,9 +230,11 @@ typedef struct
 } Jsonb;
 
 /* convenience macros for accessing the root container in a Jsonb datum */
+#define JB_HEADER(jbp_)			(((JsonbContainer *) VARDATA(jbp_))->header)
 #define JB_ROOT_COUNT(jbp_)		(*(uint32 *) VARDATA(jbp_) & JB_CMASK)
 #define JB_ROOT_IS_SCALAR(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TSCALAR)
-#define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TOBJECT)
+#define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TOBJECT || \
+								 (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TOBJECT_SORTED)
 #define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TSCALAR || \
 								 (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_TARRAY)
 

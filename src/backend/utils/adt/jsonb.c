@@ -84,7 +84,7 @@ jsonb_recv(PG_FUNCTION_ARGS)
 	int			version = pq_getmsgint(buf, 1);
 	char	   *str;
 	int			nbytes;
-
+	elog(NOTICE, "==================jsonb_recv");
 	if (version == 1)
 		str = pq_getmsgtext(buf, buf->len - buf->cursor, &nbytes);
 	else
@@ -101,7 +101,7 @@ jsonb_out(PG_FUNCTION_ARGS)
 {
 	Jsonb	   *jb = PG_GETARG_JSONB_P(0);
 	char	   *out;
-
+	elog(NOTICE, "==================jsonb_out");
 	out = JsonbToCString(NULL, &jb->root, VARSIZE(jb));
 
 	PG_RETURN_CSTRING(out);
@@ -119,7 +119,7 @@ jsonb_send(PG_FUNCTION_ARGS)
 	StringInfoData buf;
 	StringInfoData jtext;
 	int			version = 1;
-
+	elog(NOTICE, "==================jsonb_send");
 	initStringInfo(&jtext);
 	(void) JsonbToCString(&jtext, &jb->root, VARSIZE(jb));
 
@@ -152,7 +152,7 @@ static const char *
 JsonbContainerTypeName(JsonbContainer *jbc)
 {
 	JsonbValue	scalar;
-
+	elog(NOTICE, "==================JsonbContainerTypeName");
 	if (JsonbExtractScalar(jbc, &scalar))
 		return JsonbTypeName(&scalar);
 	else if (JsonContainerIsArray(jbc))
@@ -172,6 +172,7 @@ JsonbContainerTypeName(JsonbContainer *jbc)
 const char *
 JsonbTypeName(JsonbValue *val)
 {
+	elog(NOTICE, "==================JsonbTypeName");
 	switch (val->type)
 	{
 		case jbvBinary:
@@ -243,7 +244,7 @@ jsonb_from_cstring(char *json, int len, bool unique_keys, Node *escontext)
 	JsonLexContext lex;
 	JsonbInState state;
 	JsonSemAction sem;
-
+	elog(NOTICE, "==================jsonb_from_cstring");
 	memset(&state, 0, sizeof(state));
 	memset(&sem, 0, sizeof(sem));
 	makeJsonLexContextCstringLen(&lex, json, len, GetDatabaseEncoding(), true);
@@ -284,6 +285,7 @@ jsonb_in_object_start(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
+	elog(NOTICE, "==================jsonb_in_object_start");
 	pushJsonbValue(_state, WJB_BEGIN_OBJECT, NULL);
 	_state->parseState->unique_keys = _state->unique_keys;
 
@@ -295,6 +297,7 @@ jsonb_in_object_end(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
+	elog(NOTICE, "==================jsonb_in_object_end");
 	pushJsonbValue(_state, WJB_END_OBJECT, NULL);
 
 	return JSON_SUCCESS;
@@ -305,6 +308,7 @@ jsonb_in_array_start(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 
+	elog(NOTICE, "==================jsonb_in_array_start");
 	pushJsonbValue(_state, WJB_BEGIN_ARRAY, NULL);
 
 	return JSON_SUCCESS;
@@ -314,7 +318,7 @@ static JsonParseErrorType
 jsonb_in_array_end(void *pstate)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
-
+	elog(NOTICE, "==================jsonb_in_array_end");
 	pushJsonbValue(_state, WJB_END_ARRAY, NULL);
 
 	return JSON_SUCCESS;
@@ -325,7 +329,7 @@ jsonb_in_object_field_start(void *pstate, char *fname, bool isnull)
 {
 	JsonbInState *_state = (JsonbInState *) pstate;
 	JsonbValue	v;
-
+	elog(NOTICE, "==================jsonb_in_object_field_start");
 	Assert(fname != NULL);
 	v.type = jbvString;
 	v.val.string.len = strlen(fname);
@@ -341,6 +345,7 @@ jsonb_in_object_field_start(void *pstate, char *fname, bool isnull)
 static void
 jsonb_put_escaped_value(StringInfo out, JsonbValue *scalarVal)
 {
+	elog(NOTICE, "==================jsonb_put_escaped_value");
 	switch (scalarVal->type)
 	{
 		case jbvNull:
@@ -375,6 +380,7 @@ jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 	JsonbValue	v;
 	Datum		numd;
 
+	elog(NOTICE, "==================jsonb_in_scalar");
 	switch (tokentype)
 	{
 
@@ -501,6 +507,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 	bool		raw_scalar = false;
 	bool		last_was_key = false;
 
+	elog(NOTICE, "==================JsonbToCStringWorker");
 	if (out == NULL)
 		out = makeStringInfo();
 
@@ -515,6 +522,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 		switch (type)
 		{
 			case WJB_BEGIN_ARRAY:
+				elog(NOTICE, "WJB_BEGIN_ARRAY======JsonbToCStringWorker");
 				if (!first)
 					appendBinaryStringInfo(out, ", ", ispaces);
 
@@ -530,6 +538,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 				level++;
 				break;
 			case WJB_BEGIN_OBJECT:
+				elog(NOTICE, "WJB_BEGIN_OBJECT======JsonbToCStringWorker");
 				if (!first)
 					appendBinaryStringInfo(out, ", ", ispaces);
 
@@ -540,6 +549,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 				level++;
 				break;
 			case WJB_KEY:
+				elog(NOTICE, "WJB_KEY======JsonbToCStringWorker");
 				if (!first)
 					appendBinaryStringInfo(out, ", ", ispaces);
 				first = true;
@@ -569,6 +579,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 				}
 				break;
 			case WJB_ELEM:
+				elog(NOTICE, "WJB_ELEM======JsonbToCStringWorker");
 				if (!first)
 					appendBinaryStringInfo(out, ", ", ispaces);
 				first = false;
@@ -578,6 +589,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 				jsonb_put_escaped_value(out, &v);
 				break;
 			case WJB_END_ARRAY:
+				elog(NOTICE, "WJB_END_ARRAY======JsonbToCStringWorker");
 				level--;
 				if (!raw_scalar)
 				{
@@ -585,8 +597,10 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 					appendStringInfoCharMacro(out, ']');
 				}
 				first = false;
+				elog(NOTICE, "WJB_END_ARRAY======JsonbToCStringWorker out->data %s", out->data);
 				break;
 			case WJB_END_OBJECT:
+				elog(NOTICE, "WJB_END_OBJECT======JsonbToCStringWorker");
 				level--;
 				add_indent(out, use_indent, level);
 				appendStringInfoCharMacro(out, '}');
@@ -638,6 +652,7 @@ datum_to_jsonb_internal(Datum val, bool is_null, JsonbInState *result,
 	JsonbValue	jb;
 	bool		scalar_jsonb = false;
 
+	elog(NOTICE, "==================datum_to_jsonb_internal");
 	check_stack_depth();
 
 	/* Convert val to a JsonbValue in jb (in most cases) */
@@ -902,6 +917,7 @@ array_dim_to_jsonb(JsonbInState *result, int dim, int ndims, int *dims, const Da
 {
 	int			i;
 
+	elog(NOTICE, "==================array_dim_to_jsonb");
 	Assert(dim < ndims);
 
 	pushJsonbValue(result, WJB_BEGIN_ARRAY, NULL);
@@ -944,6 +960,7 @@ array_to_jsonb_internal(Datum array, JsonbInState *result)
 	JsonTypeCategory tcategory;
 	Oid			outfuncoid;
 
+	elog(NOTICE, "==================array_to_jsonb_internal");
 	ndim = ARR_NDIM(v);
 	dim = ARR_DIMS(v);
 	nitems = ArrayGetNItems(ndim, dim);
@@ -986,6 +1003,7 @@ composite_to_jsonb(Datum composite, JsonbInState *result)
 			   *tuple;
 	int			i;
 
+	elog(NOTICE, "==================composite_to_jsonb");
 	td = DatumGetHeapTupleHeader(composite);
 
 	/* Extract rowtype info and find a tupdesc */
@@ -1056,6 +1074,7 @@ add_jsonb(Datum val, bool is_null, JsonbInState *result,
 	JsonTypeCategory tcategory;
 	Oid			outfuncoid;
 
+	elog(NOTICE, "==================add_jsonb");
 	if (val_type == InvalidOid)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1087,7 +1106,7 @@ to_jsonb_is_immutable(Oid typoid)
 {
 	JsonTypeCategory tcategory;
 	Oid			outfuncoid;
-
+	elog(NOTICE, "==================to_jsonb_is_immutable");
 	json_categorize_type(typoid, true, &tcategory, &outfuncoid);
 
 	switch (tcategory)
@@ -1129,6 +1148,7 @@ to_jsonb(PG_FUNCTION_ARGS)
 	JsonTypeCategory tcategory;
 	Oid			outfuncoid;
 
+	elog(NOTICE, "==================to_jsonb");
 	if (val_type == InvalidOid)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1150,6 +1170,7 @@ datum_to_jsonb(Datum val, JsonTypeCategory tcategory, Oid outfuncoid)
 {
 	JsonbInState result;
 
+	elog(NOTICE, "==================datum_to_jsonb");
 	memset(&result, 0, sizeof(JsonbInState));
 
 	datum_to_jsonb_internal(val, false, &result, tcategory, outfuncoid,
@@ -1165,6 +1186,7 @@ jsonb_build_object_worker(int nargs, const Datum *args, const bool *nulls, const
 	int			i;
 	JsonbInState result;
 
+	elog(NOTICE, "==================jsonb_build_object_worker");
 	if (nargs % 2 != 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -1221,6 +1243,7 @@ jsonb_build_object(PG_FUNCTION_ARGS)
 	int			nargs = extract_variadic_args(fcinfo, 0, true,
 											  &args, &types, &nulls);
 
+	elog(NOTICE, "==================jsonb_build_object");
 	if (nargs < 0)
 		PG_RETURN_NULL();
 
@@ -1235,6 +1258,7 @@ jsonb_build_object_noargs(PG_FUNCTION_ARGS)
 {
 	JsonbInState result;
 
+	elog(NOTICE, "==================jsonb_build_object_noargs");
 	memset(&result, 0, sizeof(JsonbInState));
 
 	pushJsonbValue(&result, WJB_BEGIN_OBJECT, NULL);
@@ -1250,6 +1274,7 @@ jsonb_build_array_worker(int nargs, const Datum *args, const bool *nulls, const 
 	int			i;
 	JsonbInState result;
 
+	elog(NOTICE, "==================jsonb_build_array_worker");
 	memset(&result, 0, sizeof(JsonbInState));
 
 	pushJsonbValue(&result, WJB_BEGIN_ARRAY, NULL);
@@ -1277,6 +1302,7 @@ jsonb_build_array(PG_FUNCTION_ARGS)
 	bool	   *nulls;
 	Oid		   *types;
 
+	elog(NOTICE, "==================jsonb_build_array");
 	/* build argument values to build the object */
 	int			nargs = extract_variadic_args(fcinfo, 0, true,
 											  &args, &types, &nulls);
@@ -1296,6 +1322,7 @@ jsonb_build_array_noargs(PG_FUNCTION_ARGS)
 {
 	JsonbInState result;
 
+	elog(NOTICE, "==================jsonb_build_array_noargs");
 	memset(&result, 0, sizeof(JsonbInState));
 
 	pushJsonbValue(&result, WJB_BEGIN_ARRAY, NULL);
@@ -1324,6 +1351,7 @@ jsonb_object(PG_FUNCTION_ARGS)
 				i;
 	JsonbInState result;
 
+	elog(NOTICE, "==================jsonb_object");
 	memset(&result, 0, sizeof(JsonbInState));
 
 	pushJsonbValue(&result, WJB_BEGIN_OBJECT, NULL);
@@ -1428,6 +1456,7 @@ jsonb_object_two_arg(PG_FUNCTION_ARGS)
 				i;
 	JsonbInState result;
 
+	elog(NOTICE, "==================jsonb_object_two_arg");
 	memset(&result, 0, sizeof(JsonbInState));
 
 	pushJsonbValue(&result, WJB_BEGIN_OBJECT, NULL);
@@ -1511,6 +1540,7 @@ jsonb_agg_transfn_worker(FunctionCallInfo fcinfo, bool absent_on_null)
 	Datum		val;
 	JsonbInState *result;
 
+	elog(NOTICE, "==================jsonb_agg_transfn_worker");
 	if (!AggCheckCallContext(fcinfo, &aggcontext))
 	{
 		/* cannot be called directly because of internal-type argument */
@@ -1584,6 +1614,7 @@ jsonb_agg_finalfn(PG_FUNCTION_ARGS)
 	JsonbInState result;
 	Jsonb	   *out;
 
+	elog(NOTICE, "==================jsonb_agg_finalfn");
 	/* cannot be called directly because of internal-type argument */
 	Assert(AggCheckCallContext(fcinfo, NULL));
 
@@ -1620,6 +1651,7 @@ jsonb_object_agg_transfn_worker(FunctionCallInfo fcinfo,
 	JsonbInState *result;
 	bool		skip;
 
+	elog(NOTICE, "==================jsonb_object_agg_transfn_worker");
 	if (!AggCheckCallContext(fcinfo, &aggcontext))
 	{
 		/* cannot be called directly because of internal-type argument */
@@ -1742,6 +1774,7 @@ jsonb_object_agg_finalfn(PG_FUNCTION_ARGS)
 	JsonbInState result;
 	Jsonb	   *out;
 
+	elog(NOTICE, "==================jsonb_object_agg_finalfn");
 	/* cannot be called directly because of internal-type argument */
 	Assert(AggCheckCallContext(fcinfo, NULL));
 
@@ -1784,6 +1817,7 @@ JsonbExtractScalar(JsonbContainer *jbc, JsonbValue *res)
 	JsonbIteratorToken tok PG_USED_FOR_ASSERTS_ONLY;
 	JsonbValue	tmp;
 
+	elog(NOTICE, "==================JsonbExtractScalar");
 	if (!JsonContainerIsArray(jbc) || !JsonContainerIsScalar(jbc))
 	{
 		/* inform caller about actual type of container */
@@ -1853,6 +1887,8 @@ jsonb_bool(PG_FUNCTION_ARGS)
 	Jsonb	   *in = PG_GETARG_JSONB_P(0);
 	JsonbValue	v;
 
+	elog(NOTICE, "==================jsonb_bool");
+
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "boolean");
 
@@ -1877,6 +1913,7 @@ jsonb_numeric(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	Numeric		retValue;
 
+	elog(NOTICE, "==================jsonb_numeric");
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "numeric");
 
@@ -1907,6 +1944,7 @@ jsonb_int2(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	Datum		retValue;
 
+	elog(NOTICE, "==================jsonb_int2");
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "smallint");
 
@@ -1934,6 +1972,7 @@ jsonb_int4(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	Datum		retValue;
 
+	elog(NOTICE, "==================jsonb_int4");
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "integer");
 
@@ -1961,6 +2000,7 @@ jsonb_int8(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	Datum		retValue;
 
+	elog(NOTICE, "==================jsonb_int8");
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "bigint");
 
@@ -1988,6 +2028,7 @@ jsonb_float4(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	Datum		retValue;
 
+	elog(NOTICE, "==================jsonb_float4");
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "real");
 
@@ -2015,6 +2056,7 @@ jsonb_float8(PG_FUNCTION_ARGS)
 	JsonbValue	v;
 	Datum		retValue;
 
+	elog(NOTICE, "==================jsonb_float8");
 	if (!JsonbExtractScalar(&in->root, &v))
 		cannotCastJsonbValue(v.type, "double precision");
 

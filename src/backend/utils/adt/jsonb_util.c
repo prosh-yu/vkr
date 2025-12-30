@@ -98,8 +98,10 @@ JsonbValueToJsonb(JsonbValue *val)
 {
 	Jsonb	   *out;
 
+	elog(NOTICE, "===JsonbValueToJsonb_jsonb_util.c");
 	if (IsAJsonbScalar(val))
 	{
+		elog(NOTICE, "===JsonbValueToJsonb_IsAJsonbScalar");
 		/* Scalar value, so wrap it in an array */
 		JsonbInState pstate = {0};
 		JsonbValue	scalarArray;
@@ -116,10 +118,12 @@ JsonbValueToJsonb(JsonbValue *val)
 	}
 	else if (val->type == jbvObject || val->type == jbvArray)
 	{
+		elog(NOTICE, "===JsonbValueToJsonb_else-if");
 		out = convertToJsonb(val);
 	}
 	else
 	{
+		elog(NOTICE, "===JsonbValueToJsonb_else");
 		Assert(val->type == jbvBinary);
 		out = palloc(VARHDRSZ + val->val.binary.len);
 		SET_VARSIZE(out, VARHDRSZ + val->val.binary.len);
@@ -410,13 +414,14 @@ getKeyJsonValueFromContainer(JsonbContainer *container,
 	const uint32 *kvmap;
 	uint32		stopLow,
 				stopHigh;
-	elog(NOTICE, "==================getKeyJsonValueFromContainer");
+	elog(NOTICE, "1==================getKeyJsonValueFromContainer");
+	elog(NOTICE, "1==================container header = 0x%08x", container->header);
 	Assert(JsonContainerIsObject(container));
 
 	/* Quick out without a palloc cycle if object is empty */
 	if (count <= 0)
 		return NULL;
-
+	elog(NOTICE, "2==================getKeyJsonValueFromContainer");
 	/*
 	 * Binary search the container. Since we know this is an object, account
 	 * for *Pairs* of Jentrys
@@ -431,6 +436,7 @@ getKeyJsonValueFromContainer(JsonbContainer *container,
 		kvmap = NULL;
 		baseAddr = (char *) (children + count * 2);
 	}
+	elog(NOTICE, "3==================getKeyJsonValueFromContainer");
 	stopLow = 0;
 	stopHigh = count;
 	while (stopLow < stopHigh)
@@ -442,12 +448,14 @@ getKeyJsonValueFromContainer(JsonbContainer *container,
 
 		stopMiddle = stopLow + (stopHigh - stopLow) / 2;
 
+		elog(NOTICE, "4==================getKeyJsonValueFromContainer");
 		candidateVal = baseAddr + getJsonbOffset(container, stopMiddle);
 		candidateLen = getJsonbLength(container, stopMiddle);
 
 		difference = lengthCompareJsonbString(candidateVal, candidateLen,
 											  keyVal, keyLen);
 
+		elog(NOTICE, "5==================getKeyJsonValueFromContainer");
 		if (difference == 0)
 		{
 			/* Found our key, return corresponding value */
@@ -455,11 +463,11 @@ getKeyJsonValueFromContainer(JsonbContainer *container,
 
 			if (!res)
 				res = palloc_object(JsonbValue);
-
+			elog(NOTICE, "6==================getKeyJsonValueFromContainer");
 			fillJsonbValue(container, index, baseAddr,
 						   getJsonbOffset(container, index),
 						   res);
-
+			elog(NOTICE, "7==================getKeyJsonValueFromContainer");
 			return res;
 		}
 		else
@@ -525,13 +533,15 @@ fillJsonbValue(JsonbContainer *container, int index,
 {
 	JEntry		entry = container->children[index];
 
-	elog(NOTICE, "==================fillJsonbValue");
+	elog(NOTICE, "====fillJsonbValue");
 	if (JBE_ISNULL(entry))
 	{
+		elog(NOTICE, "====fillJsonbValue_JBE_ISNULL");
 		result->type = jbvNull;
 	}
 	else if (JBE_ISSTRING(entry))
 	{
+		elog(NOTICE, "====fillJsonbValue_JBE_ISSTRING");
 		result->type = jbvString;
 		result->val.string.val = base_addr + offset;
 		result->val.string.len = getJsonbLength(container, index);
@@ -539,21 +549,25 @@ fillJsonbValue(JsonbContainer *container, int index,
 	}
 	else if (JBE_ISNUMERIC(entry))
 	{
+		elog(NOTICE, "====fillJsonbValue_JBE_ISNUMERIC");
 		result->type = jbvNumeric;
 		result->val.numeric = (Numeric) (base_addr + INTALIGN(offset));
 	}
 	else if (JBE_ISBOOL_TRUE(entry))
 	{
+		elog(NOTICE, "====fillJsonbValue_JBE_ISBOOL_TRUE");
 		result->type = jbvBool;
 		result->val.boolean = true;
 	}
 	else if (JBE_ISBOOL_FALSE(entry))
 	{
+		elog(NOTICE, "====fillJsonbValue_JBE_ISBOOL_FALSE");
 		result->type = jbvBool;
 		result->val.boolean = false;
 	}
 	else
 	{
+		elog(NOTICE, "====fillJsonbValue_else");
 		Assert(JBE_ISCONTAINER(entry));
 		result->type = jbvBinary;
 		/* Remove alignment padding from data pointer and length */
@@ -602,7 +616,14 @@ pushJsonbValue(JsonbInState *pstate, JsonbIteratorToken seq,
 	JsonbIteratorToken tok;
 	int			i;
 
-	elog(NOTICE, "==================pushJsonbValue");
+	elog(NOTICE, "=====pushJsonbValue===WJB_DONE %d", seq==WJB_DONE);
+	elog(NOTICE, "=====pushJsonbValue===WJB_KEY %d", seq==WJB_KEY);
+	elog(NOTICE, "=====pushJsonbValue===WJB_VALUE %d", seq==WJB_VALUE);
+	elog(NOTICE, "=====pushJsonbValue===WJB_ELEM %d", seq==WJB_ELEM);
+	elog(NOTICE, "=====pushJsonbValue===WJB_BEGIN_ARRAY %d", seq==WJB_BEGIN_ARRAY);
+	elog(NOTICE, "=====pushJsonbValue===WJB_END_ARRAY %d", seq==WJB_END_ARRAY);
+	elog(NOTICE, "=====pushJsonbValue===WJB_BEGIN_OBJECT %d", seq==WJB_BEGIN_OBJECT);
+	elog(NOTICE, "=====pushJsonbValue===WJB_END_OBJECT %d", seq==WJB_END_OBJECT);
 	/*
 	 * pushJsonbValueScalar handles all cases not involving pushing a
 	 * container object as an ELEM or VALUE.
@@ -682,10 +703,11 @@ pushJsonbValueScalar(JsonbInState *pstate, JsonbIteratorToken seq,
 	JsonbValue *val;
 	MemoryContext outcontext;
 
-	elog(NOTICE, "==================pushJsonbValueScalar");
+	elog(NOTICE, "======pushJsonbValueScalar");
 	switch (seq)
 	{
 		case WJB_BEGIN_ARRAY:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_BEGIN_ARRAY");
 			Assert(!scalarVal || scalarVal->val.array.rawScalar);
 			ppstate = pushState(pstate);
 			val = &ppstate->contVal;
@@ -709,6 +731,7 @@ pushJsonbValueScalar(JsonbInState *pstate, JsonbIteratorToken seq,
 													  ppstate->size);
 			break;
 		case WJB_BEGIN_OBJECT:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_BEGIN_OBJECT");
 			Assert(!scalarVal);
 			ppstate = pushState(pstate);
 			val = &ppstate->contVal;
@@ -721,24 +744,29 @@ pushJsonbValueScalar(JsonbInState *pstate, JsonbIteratorToken seq,
 													   ppstate->size);
 			break;
 		case WJB_KEY:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_KEY");
 			Assert(scalarVal->type == jbvString);
 			appendKey(pstate, scalarVal, true);
 			break;
 		case WJB_VALUE:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_VALUE");
 			Assert(IsAJsonbScalar(scalarVal));
 			appendValue(pstate, scalarVal, true);
 			break;
 		case WJB_ELEM:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_ELEM");
 			Assert(IsAJsonbScalar(scalarVal));
 			appendElement(pstate, scalarVal, true);
 			break;
 		case WJB_END_OBJECT:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_END_OBJECT");
 			ppstate = pstate->parseState;
 			uniqueifyJsonbObject(&ppstate->contVal,
 								 ppstate->unique_keys,
 								 ppstate->skip_nulls);
 			/* fall through! */
 		case WJB_END_ARRAY:
+			elog(NOTICE, "======pushJsonbValueScalar_WJB_END_ARRAY");
 			/* Steps here common to WJB_END_OBJECT case */
 			Assert(!scalarVal);
 			ppstate = pstate->parseState;
@@ -858,7 +886,7 @@ appendElement(JsonbInState *pstate, JsonbValue *scalarVal, bool needCopy)
 	JsonbValue *array = &ppstate->contVal;
 	JsonbValue *elem;
 
-	elog(NOTICE, "==================appendElement");
+	elog(NOTICE, "=======appendElement");
 	Assert(array->type == jbvArray);
 
 	if (array->val.array.nElems >= ppstate->size)
@@ -893,18 +921,21 @@ copyScalarSubstructure(JsonbValue *v, MemoryContext outcontext)
 {
 	MemoryContext oldcontext;
 
-	elog(NOTICE, "==================copyScalarSubstructure");
+	elog(NOTICE, "=======copyScalarSubstructure");
 	/* Nothing to do if caller did not specify an outcontext */
 	if (outcontext == NULL)
 		return;
 	switch (v->type)
 	{
 		case jbvNull:
+			elog(NOTICE, "=======copyScalarSubstructure jbvNull");
 		case jbvBool:
+			elog(NOTICE, "=======copyScalarSubstructure jbvBool");
 			/* pass-by-value, nothing to do */
 			break;
 		case jbvString:
 			{
+				elog(NOTICE, "=======copyScalarSubstructure jbvString %s", v->val.string.val);
 				char	   *buf = MemoryContextAlloc(outcontext,
 													 v->val.string.len);
 
@@ -913,6 +944,7 @@ copyScalarSubstructure(JsonbValue *v, MemoryContext outcontext)
 			}
 			break;
 		case jbvNumeric:
+			elog(NOTICE, "=======copyScalarSubstructure jbvNumeric");
 			oldcontext = MemoryContextSwitchTo(outcontext);
 			v->val.numeric =
 				DatumGetNumeric(datumCopy(NumericGetDatum(v->val.numeric),
@@ -920,6 +952,7 @@ copyScalarSubstructure(JsonbValue *v, MemoryContext outcontext)
 			MemoryContextSwitchTo(oldcontext);
 			break;
 		case jbvDatetime:
+			elog(NOTICE, "=======copyScalarSubstructure jbvDatetime");
 			switch (v->val.datetime.typid)
 			{
 				case DATEOID:
@@ -1008,6 +1041,7 @@ recurse:
 	switch ((*it)->state)
 	{
 		case JBI_ARRAY_START:
+			elog(NOTICE, "==================JBI_ARRAY_START");
 			/* Set v to array on first array call */
 			val->type = jbvArray;
 			val->val.array.nElems = (*it)->nElems;
@@ -1025,8 +1059,10 @@ recurse:
 			return WJB_BEGIN_ARRAY;
 
 		case JBI_ARRAY_ELEM:
+			elog(NOTICE, "==================JBI_ARRAY_ELEM");
 			if ((*it)->curIndex >= (*it)->nElems)
 			{
+				elog(NOTICE, "1==================JBI_ARRAY_ELEM");
 				/*
 				 * All elements within array already processed.  Report this
 				 * to caller, and give it back original parent iterator (which
@@ -1034,10 +1070,11 @@ recurse:
 				 * nesting).
 				 */
 				*it = freeAndGetParent(*it);
-				val->type = jbvNull;
+				elog(NOTICE, "1==========JBI_ARRAY_ELEM WJB_END_ARRAY");
+				//val->type = jbvNull;
 				return WJB_END_ARRAY;
 			}
-
+			elog(NOTICE, "2==================JBI_ARRAY_ELEM");
 			fillJsonbValue((*it)->container, (*it)->curIndex,
 						   (*it)->dataProper, (*it)->curDataOffset,
 						   val);
@@ -1054,6 +1091,7 @@ recurse:
 			}
 			else
 			{
+				elog(NOTICE, "3==================JBI_ARRAY_ELEM");
 				/*
 				 * Scalar item in array, or a container and caller didn't want
 				 * us to recurse into it.
@@ -1062,6 +1100,7 @@ recurse:
 			}
 
 		case JBI_OBJECT_START:
+			elog(NOTICE, "==================JBI_OBJECT_START");
 			/* Set v to object on first object call */
 			val->type = jbvObject;
 			val->val.object.nPairs = (*it)->nElems;
@@ -1079,6 +1118,7 @@ recurse:
 			return WJB_BEGIN_OBJECT;
 
 		case JBI_OBJECT_KEY:
+			elog(NOTICE, "==================JBI_OBJECT_KEY");
 			if ((*it)->curIndex >= (*it)->nElems)
 			{
 				/*
@@ -1106,7 +1146,7 @@ recurse:
 			}
 
 		case JBI_OBJECT_VALUE:
-			elog(NOTICE, "3==================");
+			elog(NOTICE, "==================JBI_OBJECT_VALUE");
 			/* Set state for next call */
 			(*it)->state = JBI_OBJECT_KEY;
 
@@ -1165,17 +1205,21 @@ iteratorFromContainer(JsonbContainer *container, JsonbIterator *parent)
 	switch (container->header & JB_TMASK)
 	{
 		case JB_FSCALAR:
-			elog(NOTICE, "JB_FSCALAR");
+			elog(NOTICE, "JB_FSCALAR????????????");
 			it->isScalar = true;
 		case JB_FARRAY:
-			elog(NOTICE, "JB_FARRAY");
+			elog(NOTICE, "JB_FARRAY1");
 			it->dataProper =
 				(char *) it->children + it->nElems * sizeof(JEntry);
+			elog(NOTICE, "JB_FARRAY2");
+			elog(NOTICE, "JB_FARRAY2, header=0x%08x", container->header);
 			it->isScalar = JsonContainerIsScalar(container);
+			elog(NOTICE, "JB_FARRAY2, header=0x%08x", container->header);
 			/* This is either a "raw scalar", or an array */
-			Assert(!it->isScalar || it->nElems == 1);
-
+//			Assert(!it->isScalar || it->nElems == 1);
+			elog(NOTICE, "JB_FARRAY3");
 			it->state = JBI_ARRAY_START;
+			elog(NOTICE, "JB_FARRAY4");
 			break;
 
 		case JB_FOBJECT:
@@ -1648,7 +1692,7 @@ reserveFromBuffer(StringInfo buffer, int len)
 {
 	int			offset;
 
-	elog(NOTICE, "==================reserveFromBuffer");
+	elog(NOTICE, "========reserveFromBuffer");
 	/* Make more room if needed */
 	enlargeStringInfo(buffer, len);
 
@@ -1721,7 +1765,7 @@ convertToJsonb(JsonbValue *val)
 	JEntry		jentry;
 	Jsonb	   *res;
 
-	elog(NOTICE, "==================convertToJsonb");
+	elog(NOTICE, "=======convertToJsonb");
 	/* Should not already have binary representation */
 	Assert(val->type != jbvBinary);
 
@@ -1760,7 +1804,7 @@ convertToJsonb(JsonbValue *val)
 static void
 convertJsonbValue(StringInfo buffer, JEntry *header, JsonbValue *val, int level)
 {
-	elog(NOTICE, "==================convertJsonbValue");
+	elog(NOTICE, "========convertJsonbValue");
 	check_stack_depth();
 
 	if (!val)
@@ -2077,20 +2121,23 @@ convertJsonbScalar(StringInfo buffer, JEntry *header, JsonbValue *scalarVal)
 	int			numlen;
 	short		padlen;
 
-	elog(NOTICE, "==================convertJsonbScalar");
+	elog(NOTICE, "========convertJsonbScalar");
 	switch (scalarVal->type)
 	{
 		case jbvNull:
+			elog(NOTICE, "========jbvNull");
 			*header = JENTRY_ISNULL;
 			break;
 
 		case jbvString:
+			elog(NOTICE, "========jbvString");
 			appendToBuffer(buffer, scalarVal->val.string.val, scalarVal->val.string.len);
 
 			*header = scalarVal->val.string.len;
 			break;
 
 		case jbvNumeric:
+			elog(NOTICE, "========jbvNumeric");
 			numlen = VARSIZE_ANY(scalarVal->val.numeric);
 			padlen = padBufferToInt(buffer);
 
@@ -2100,11 +2147,13 @@ convertJsonbScalar(StringInfo buffer, JEntry *header, JsonbValue *scalarVal)
 			break;
 
 		case jbvBool:
+			elog(NOTICE, "========jbvBool");
 			*header = (scalarVal->val.boolean) ?
 				JENTRY_ISBOOL_TRUE : JENTRY_ISBOOL_FALSE;
 			break;
 
 		case jbvDatetime:
+			elog(NOTICE, "========jbvDatetime");
 			{
 				char		buf[MAXDATELEN + 1];
 				size_t		len;
