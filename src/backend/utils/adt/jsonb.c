@@ -100,7 +100,6 @@ jsonb_out(PG_FUNCTION_ARGS)
 {
 	Jsonb	   *jb = PG_GETARG_JSONB_P(0);
 	char	   *out;
-//	jb->root.header = jb->root.header + 1;
 	out = JsonbToCString(NULL, &jb->root, VARSIZE(jb));
 
 	PG_RETURN_CSTRING(out);

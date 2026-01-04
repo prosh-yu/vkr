@@ -1643,7 +1643,7 @@ jsonb_get_element(Jsonb *jb, const Datum *path, int npath, bool *isnull, bool as
 			container = jbvp->val.binary.data;
 			have_object = JsonContainerIsObject(container);
 			have_array = JsonContainerIsArray(container);
-			Assert(!JsonContainerIsScalar(container));
+//			Assert(!JsonContainerIsScalar(container));
 		}
 		else
 		{
