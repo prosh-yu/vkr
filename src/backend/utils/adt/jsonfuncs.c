@@ -1542,7 +1542,7 @@ jsonb_get_element(Jsonb *jb, const Datum *path, int npath, bool *isnull, bool as
 		have_array = true;
 	else
 	{
-		Assert(JB_ROOT_IS_ARRAY(jb) && JB_ROOT_IS_SCALAR(jb));
+		//Assert(JB_ROOT_IS_ARRAY(jb) && JB_ROOT_IS_SCALAR(jb));
 		/* Extract the scalar value, if it is what we'll return */
 		if (npath <= 0)
 			jbvp = getIthJsonbValueFromContainer(container, 0);

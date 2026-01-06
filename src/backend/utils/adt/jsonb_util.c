@@ -406,7 +406,7 @@ getKeyJsonValueFromContainer(JsonbContainer *container,
 	JEntry	   *children = container->children;
 	int			count = JsonContainerSize(container);
 	char	   *baseAddr;
-	bool		sorted_values = (container->header & JB_TMASK) == JB_TOBJECT_SORTED;
+	bool		sorted_values = (container->header & JB_TMASK) == JB_FOBJECT_SORTED;
 	const uint32 *kvmap;
 	uint32		stopLow,
 				stopHigh;
@@ -635,7 +635,7 @@ pushJsonbValue(JsonbInState *pstate, JsonbIteratorToken seq,
 	it = JsonbIteratorInit(jbval->val.binary.data);
 
 	/* ... with a special case for pushing a raw scalar */
-	if ((jbval->val.binary.data->header & JB_FSCALAR) &&
+	if (JsonContainerIsScalar(jbval->val.binary.data) &&
 		pstate->parseState != NULL)
 	{
 		tok = JsonbIteratorNext(&it, &v, true);
@@ -1169,7 +1169,7 @@ iteratorFromContainer(JsonbContainer *container, JsonbIterator *parent)
 				(char *) it->children + it->nElems * sizeof(JEntry) * 2;
 			it->state = JBI_OBJECT_START;
 			break;
-		case JB_TOBJECT_SORTED:
+		case JB_FOBJECT_SORTED:
 			it->kvMap = (uint32 *)
 				((char *) it->children + it->nElems * sizeof(JEntry) * 2);
 			it->dataProper = (char *) &it->kvMap[it->nElems];
@@ -1927,7 +1927,7 @@ convertJsonbObject(StringInfo buffer, JEntry *header, JsonbValue *val, int level
 	 * Construct the header Jentry and store it in the beginning of the
 	 * variable-length payload.
 	 */
-	containerheader = nPairs | (sorted_values ? JB_TOBJECT_SORTED : JB_TOBJECT);
+	containerheader = nPairs | (sorted_values ? JB_FOBJECT_SORTED : JB_FOBJECT);
 	appendToBuffer(buffer, &containerheader, sizeof(uint32));
 
 	/* Reserve space for the JEntries of the keys and values. */
