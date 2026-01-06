@@ -367,7 +367,6 @@ jsonb_in_scalar(void *pstate, char *token, JsonTokenType tokentype)
 	JsonbInState *_state = (JsonbInState *) pstate;
 	JsonbValue	v;
 	Datum		numd;
-
 	switch (tokentype)
 	{
 
@@ -1209,7 +1208,7 @@ jsonb_build_object(PG_FUNCTION_ARGS)
 	Oid		   *types;
 
 	/* build argument values to build the object */
-	int			nargs = extract_variadic_args(fcinfo, 0, true,
+	int	nargs = extract_variadic_args(fcinfo, 0, true,
 											  &args, &types, &nulls);
 
 	if (nargs < 0)

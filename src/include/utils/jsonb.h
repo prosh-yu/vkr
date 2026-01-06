@@ -230,10 +230,10 @@ typedef struct
 /* convenience macros for accessing the root container in a Jsonb datum */
 #define JB_HEADER(jbp_)			(((JsonbContainer *) VARDATA(jbp_))->header)
 #define JB_ROOT_COUNT(jbp_)		(*(uint32 *) VARDATA(jbp_) & JB_CMASK)
-#define JB_ROOT_IS_SCALAR(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FSCALAR)
-#define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FOBJECT || \
-								 (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FOBJECT_SORTED)
-#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FARRAY)
+#define JB_ROOT_IS_SCALAR(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_FSCALAR) == JB_FSCALAR)
+#define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_FOBJECT) == JB_FOBJECT || \
+								 (*(uint32 *) VARDATA(jbp_) & JB_FOBJECT_SORTED) == JB_FOBJECT_SORTED)
+#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_FARRAY) == JB_FARRAY)
 
 //#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FSCALAR || \
 								// (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FARRAY)

@@ -756,7 +756,7 @@ pushJsonbValueScalar(JsonbInState *pstate, JsonbIteratorToken seq,
 			}
 			else{
 				pstate->result = val;
-}
+			}
 			break;
 		default:
 			elog(ERROR, "unrecognized jsonb sequential processing token");
