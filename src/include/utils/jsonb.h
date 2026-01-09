@@ -310,7 +310,16 @@ struct JsonbValue
 		}			datetime;
 	}			val;
 };
+/*
+static inline JsonbValue *
+JsonValueInitBinary(JsonbValue *val, JsonbContainer *cont)
+{
+	val->type = jbvBinary;
+	val->val.binary.data = cont;
 
+	return val;
+}
+*/
 #define IsAJsonbScalar(jsonbval)	(((jsonbval)->type >= jbvNull && \
 									  (jsonbval)->type <= jbvBool) || \
 									  (jsonbval)->type == jbvDatetime)
@@ -380,10 +389,27 @@ typedef enum
 	JBI_OBJECT_VALUE,
 } JsonbIterState;
 
+typedef struct CompressedDatum
+{
+	struct varlena *compressed;
+	void	   *data;
+	void	   *state;
+	int			total_len;
+	int			decompressed_len;
+} CompressedDatum;
+
+typedef struct CompressedJsonb
+{
+	CompressedDatum *datum;
+	int			offset;
+} CompressedJsonb;
+
 typedef struct JsonbIterator
 {
 	/* Container being iterated */
 	JsonbContainer *container;
+	CompressedJsonb *compressed;	/* compressed jsonb container, if any */
+
 	uint32		nElems;			/* Number of elements in children array (will
 								 * be nPairs for objects) */
 	bool		isScalar;		/* Pseudo-array scalar value? */

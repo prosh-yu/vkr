@@ -216,6 +216,17 @@ typedef struct PGLZ_HistEntry
 } PGLZ_HistEntry;
 
 
+/* Opaque pglz decompression state */
+typedef struct pglz_state
+{
+	const unsigned char *sp;
+	unsigned char *dp;
+	int32		len;
+	int32		off;
+	int			ctrlc;
+	unsigned char ctrl;
+} pglz_state;
+
 /* ----------
  * The provided standard strategies
  * ----------
@@ -404,6 +415,13 @@ pglz_find_match(int16 *hstart, const char *input, const char *end,
 	int32		len = 0;
 	int32		off = 0;
 
+/*
+#ifndef FRONTEND
+	elog(NOTICE, "pglz_find_match");
+#else
+	fprintf(stderr, "pglz_find_match\n");
+#endif
+*/
 	/*
 	 * Traverse the linked history list until a good enough match is found.
 	 */
@@ -530,6 +548,13 @@ pglz_compress(const char *source, int32 slen, char *dest,
 	int			hashsz;
 	int			mask;
 
+/*
+#ifndef FRONTEND
+	elog(NOTICE, "pglz_compress");
+#else
+	fprintf(stderr, "pglz_compress\n");
+#endif
+*/
 	/*
 	 * Our fallback strategy is the default.
 	 */
@@ -689,18 +714,77 @@ pglz_compress(const char *source, int32 slen, char *dest,
  * ----------
  */
 int32
-pglz_decompress(const char *source, int32 slen, char *dest,
-				int32 rawsize, bool check_complete)
+pglz_decompress_state(const char *source, int32 slen, char *dest,
+				int32 rawsize, bool check_complete, void **pstate)
 {
+	pglz_state *state = pstate ? *pstate : NULL;
 	const unsigned char *sp;
 	const unsigned char *srcend;
 	unsigned char *dp;
 	unsigned char *destend;
 
-	sp = (const unsigned char *) source;
+	unsigned char ctrl;
+	int			ctrlc;
+	int32		len;
+	int32		remlen;
+	int32		off;
+/*
+#ifndef FRONTEND
+	elog(NOTICE, "pglz_decompress");
+#else
+	fprintf(stderr, "pglz_decompress\n");
+#endif
+*/
 	srcend = ((const unsigned char *) source) + slen;
-	dp = (unsigned char *) dest;
-	destend = dp + rawsize;
+	destend = ((unsigned char *) dest) + rawsize;
+
+	if (state)
+	{
+		sp = state->sp;
+		dp = state->dp;
+		ctrl = state->ctrl;
+		ctrlc = state->ctrlc;
+
+		if (state->len)
+		{
+			int32		copylen;
+
+			len = state->len;
+			off = state->off;
+
+			copylen = Min(len, destend - dp);
+			remlen = len - copylen;
+			while (copylen--)
+			{
+				*dp = dp[-off];
+				dp++;
+			}
+
+			if (dp >= destend)
+			{
+				state->len = remlen;
+				state->dp = dp;
+				return (char *) dp - dest;
+			}
+
+			Assert(remlen == 0);
+		}
+
+		remlen = 0;
+		off = 0;
+
+		if (ctrlc < 8 && sp < srcend && dp < destend)
+			goto ctrl_loop;
+	}
+	else
+	{
+		sp = (const unsigned char *) source;
+		dp = (unsigned char *) dest;
+		ctrl = 0;
+		ctrlc = 8;
+		remlen = 0;
+		off = 0;
+	}
 
 	while (sp < srcend && dp < destend)
 	{
@@ -708,13 +792,15 @@ pglz_decompress(const char *source, int32 slen, char *dest,
 		 * Read one control byte and process the next 8 items (or as many as
 		 * remain in the compressed input).
 		 */
-		unsigned char ctrl = *sp++;
-		int			ctrlc;
+		ctrl = *sp++;
 
 		for (ctrlc = 0; ctrlc < 8 && sp < srcend && dp < destend; ctrlc++)
 		{
+ctrl_loop:
 			if (ctrl & 1)
 			{
+				int32		copylen;
+
 				/*
 				 * Set control bit means we must read a match tag. The match
 				 * is coded with two bytes. First byte uses lower nibble to
@@ -724,9 +810,6 @@ pglz_decompress(const char *source, int32 slen, char *dest,
 				 * extension tag byte tells how much longer the match really
 				 * was (0-255).
 				 */
-				int32		len;
-				int32		off;
-
 				len = (sp[0] & 0x0f) + 3;
 				off = ((sp[0] & 0xf0) << 4) | sp[1];
 				sp += 2;
@@ -735,21 +818,18 @@ pglz_decompress(const char *source, int32 slen, char *dest,
 
 				/*
 				 * Check for corrupt data: if we fell off the end of the
-				 * source, or if we obtained off = 0, or if off is more than
-				 * the distance back to the buffer start, we have problems.
-				 * (We must check for off = 0, else we risk an infinite loop
-				 * below in the face of corrupt data.  Likewise, the upper
-				 * limit on off prevents accessing outside the buffer
-				 * boundaries.)
+				 * source, or if we obtained off = 0, we have problems.  (We
+				 * must check this, else we risk an infinite loop below in the
+				 * face of corrupt data.)
 				 */
-				if (unlikely(sp > srcend || off == 0 ||
-							 off > (dp - (unsigned char *) dest)))
+				if (unlikely(sp > srcend || off == 0))
 					return -1;
 
 				/*
 				 * Don't emit more data than requested.
 				 */
-				len = Min(len, destend - dp);
+				copylen = Min(len, destend - dp);
+				remlen = len - copylen;
 
 				/*
 				 * Now we copy the bytes specified by the tag from OUTPUT to
@@ -760,14 +840,14 @@ pglz_decompress(const char *source, int32 slen, char *dest,
 				 * Note that we cannot use memmove() instead, since while its
 				 * behavior is well-defined, it's also not what we want.
 				 */
-				while (off < len)
+				while (off < copylen)
 				{
 					/*
 					 * We can safely copy "off" bytes since that clearly
 					 * results in non-overlapping source and destination.
 					 */
 					memcpy(dp, dp - off, off);
-					len -= off;
+					copylen -= off;
 					dp += off;
 
 					/*----------
@@ -796,8 +876,8 @@ pglz_decompress(const char *source, int32 slen, char *dest,
 					 */
 					off += off;
 				}
-				memcpy(dp, dp - off, len);
-				dp += len;
+				memcpy(dp, dp - off, copylen);
+				dp += copylen;
 			}
 			else
 			{
@@ -820,6 +900,19 @@ pglz_decompress(const char *source, int32 slen, char *dest,
 	 */
 	if (check_complete && (dp != destend || sp != srcend))
 		return -1;
+
+	if (pstate)
+	{
+		if (!state)
+			*pstate = state = palloc(sizeof(*state));
+
+		state->ctrl = ctrl;
+		state->ctrlc = ctrlc;
+		state->sp = sp;
+		state->dp = dp;
+		state->len = remlen;
+		state->off = off;
+	}
 
 	/*
 	 * That's it.
@@ -846,7 +939,13 @@ int32
 pglz_maximum_compressed_size(int32 rawsize, int32 total_compressed_size)
 {
 	int64		compressed_size;
-
+/*
+#ifndef FRONTEND
+	elog(NOTICE, "pglz_maximum_compressed_size");
+#else
+	fprintf(stderr, "pglz_maximum_compressed_size\n");
+#endif
+*/
 	/*
 	 * pglz uses one control bit per byte, so if the entire desired prefix is
 	 * represented as literal bytes, we'll need (rawsize * 9) bits.  We care
@@ -873,4 +972,11 @@ pglz_maximum_compressed_size(int32 rawsize, int32 total_compressed_size)
 	compressed_size = Min(compressed_size, total_compressed_size);
 
 	return (int32) compressed_size;
+}
+
+int32
+pglz_decompress(const char *source, int32 slen, char *dest, int32 rawsize,
+				bool check_complete)
+{
+	return pglz_decompress_state(source, slen, dest, rawsize, check_complete, NULL);
 }

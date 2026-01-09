@@ -35,6 +35,9 @@ typedef struct toast_compress_header
 	(((toast_compress_header *) (ptr))->tcinfo & VARLENA_EXTSIZE_MASK)
 #define TOAST_COMPRESS_METHOD(ptr) \
 	(((toast_compress_header *) (ptr))->tcinfo >> VARLENA_EXTSIZE_BITS)
+#define TOAST_COMPRESS_HDRSZ			VARHDRSZ_COMPRESSED
+#define TOAST_COMPRESS_RAWDATA(attr)	((char *)(attr) + TOAST_COMPRESS_HDRSZ)
+
 
 #define TOAST_COMPRESS_SET_SIZE_AND_COMPRESS_METHOD(ptr, len, cm_method) \
 	do { \

@@ -13,6 +13,10 @@
  */
 #include "postgres.h"
 
+#include "access/detoast.h"
+#include "access/toast_internals.h"
+#include "common/pg_lzcompress.h"
+
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
 #include "common/hashfn.h"
@@ -40,9 +44,10 @@
 #define JSONB_MAX_ELEMS (Min(MaxAllocSize / sizeof(JsonbValue), JB_CMASK))
 #define JSONB_MAX_PAIRS (Min(MaxAllocSize / sizeof(JsonbPair), JB_CMASK))
 
-static void fillJsonbValue(JsonbContainer *container, int index,
+void fillJsonbValue(const JsonbContainer *container, int index,
 						   char *base_addr, uint32 offset,
 						   JsonbValue *result);
+
 static bool equalsJsonbScalarValue(JsonbValue *a, JsonbValue *b);
 static int	compareJsonbScalarValue(JsonbValue *a, JsonbValue *b);
 static Jsonb *convertToJsonb(JsonbValue *val);
@@ -73,6 +78,11 @@ static void pushJsonbValueScalar(JsonbInState *pstate,
 								 JsonbIteratorToken seq,
 								 JsonbValue *scalarVal);
 
+static void CompressedDatumDecompress(CompressedDatum *cd, Size offset);
+static JsonbValue *fillCompressedJsonbValue(CompressedJsonb *cjb,
+											const JsonbContainer *container,
+											int index, char *base_addr,
+											uint32 offset, JsonbValue *result);
 void
 JsonbToJsonbValue(Jsonb *jsonb, JsonbValue *val)
 {
@@ -513,8 +523,8 @@ getIthJsonbValueFromContainer(JsonbContainer *container, uint32 i)
  * A nested array or object will be returned as jbvBinary, ie. it won't be
  * expanded.
  */
-static void
-fillJsonbValue(JsonbContainer *container, int index,
+void
+fillJsonbValue(const JsonbContainer *container, int index,
 			   char *base_addr, uint32 offset,
 			   JsonbValue *result)
 {
@@ -773,6 +783,8 @@ static JsonbParseState *
 pushState(JsonbInState *pstate)
 {
 	MemoryContext outcontext;
+	JsonbParseState *ns;
+
 	if(pstate->outcontext){
 		outcontext = pstate->outcontext;
 	}
@@ -780,8 +792,7 @@ pushState(JsonbInState *pstate)
 		outcontext = CurrentMemoryContext;
 	}
 //	MemoryContext outcontext = pstate->outcontext ? pstate->outcontext : CurrentMemoryContext;
-	JsonbParseState *ns = MemoryContextAlloc(outcontext,
-											 sizeof(JsonbParseState));
+	ns = MemoryContextAlloc(outcontext, sizeof(JsonbParseState));
 	ns->next = pstate->parseState;
 	/* This module never changes these fields, but callers can: */
 	ns->unique_keys = false;
@@ -1029,7 +1040,7 @@ recurse:
 				//val->type = jbvNull;
 				return WJB_END_ARRAY;
 			}
-			fillJsonbValue((*it)->container, (*it)->curIndex,
+			fillCompressedJsonbValue((*it)->compressed, (*it)->container, (*it)->curIndex,
 						   (*it)->dataProper, (*it)->curDataOffset,
 						   val);
 
@@ -1085,7 +1096,7 @@ recurse:
 			else
 			{
 				/* Return key of a key/value pair.  */
-				fillJsonbValue((*it)->container, (*it)->curIndex,
+				fillCompressedJsonbValue((*it)->compressed, (*it)->container, (*it)->curIndex,
 							   (*it)->dataProper, (*it)->curDataOffset,
 							   val);
 				if (val->type != jbvString)
@@ -1100,7 +1111,7 @@ recurse:
 			/* Set state for next call */
 			(*it)->state = JBI_OBJECT_KEY;
 
-			fillJsonbValue((*it)->container,
+			fillCompressedJsonbValue((*it)->compressed, (*it)->container,
 						   ((*it)->kvMap ? (*it)->kvMap[(*it)->curIndex] : (*it)->curIndex) + (*it)->nElems,
 						   (*it)->dataProper,
 						   (*it)->kvMap ?
@@ -1142,11 +1153,13 @@ static JsonbIterator *
 iteratorFromContainer(JsonbContainer *container, JsonbIterator *parent)
 {
 	JsonbIterator *it;
+	CompressedJsonb *cjb = NULL;
 
 	it = palloc0_object(JsonbIterator);
 	it->container = container;
 	it->parent = parent;
 	it->nElems = JsonContainerSize(container);
+	it->compressed = cjb;
 
 	/* Array starts just after header */
 	it->children = container->children;
@@ -1178,6 +1191,9 @@ iteratorFromContainer(JsonbContainer *container, JsonbIterator *parent)
 		default:
 			elog(ERROR, "unknown type of jsonb container");
 	}
+	if (it->dataProper && cjb)
+		CompressedDatumDecompress(cjb->datum,
+								  it->dataProper - (char *) cjb->datum->data);
 
 	return it;
 }
@@ -2207,4 +2223,78 @@ uniqueifyJsonbObject(JsonbValue *object, bool unique_keys, bool skip_nulls)
 		}
 		object->val.object.nPairs = nNewPairs;
 	}
+}
+
+static JsonbValue *
+fillCompressedJsonbValue(CompressedJsonb *cjb, const JsonbContainer *container,
+						 int index, char *base_addr, uint32 offset,
+						 JsonbValue *result)
+{
+	JEntry		entry = container->children[index];
+	uint32		len = getJsonbLength(container, index);
+	Size		base_offset;
+
+	if (!cjb)
+	{
+		fillJsonbValue(container, index, base_addr, offset, result);
+		return result;
+	}
+
+	base_offset = base_addr - (char *) cjb->datum->data;
+
+	if (JBE_ISCONTAINER(entry) /* && len > JSONBZ_MIN_CONTAINER_LEN */)
+	{
+		//JsonContainer *cont = JsonContainerAlloc(&jsonbzContainerOps);
+		CompressedJsonb cjb2;
+
+		cjb2.datum = cjb->datum;
+		/* Remove alignment padding from data pointer and length */
+		cjb2.offset = base_offset + INTALIGN(offset);
+
+		len -= INTALIGN(offset) - offset;
+
+		CompressedDatumDecompress(cjb->datum, cjb2.offset +
+								  offsetof(JsonbContainer, children));
+
+		//jsonbzInitContainer(cont, &cjb2, len);
+		//JsonValueInitBinary(result, cont);
+	}
+	else
+	{
+		CompressedDatumDecompress(cjb->datum, base_offset + offset + len);
+		fillJsonbValue(container, index, base_addr, offset, result);
+	}
+
+	return result;
+}
+static void
+CompressedDatumDecompress(CompressedDatum *cd, Size offset)
+{
+	int			res;
+
+	if (!cd->compressed || offset < cd->decompressed_len)
+		return;
+
+#if 0
+	cd->data = detoast_attr_slice(cd->compressed, 0, offset - VARHDRSZ);
+#else
+	if (!cd->data)
+	{
+		cd->data = palloc(cd->total_len);
+		SET_VARSIZE(cd->data, cd->total_len);
+	}
+
+	res = pglz_decompress_state(TOAST_COMPRESS_RAWDATA(cd->compressed),
+								VARSIZE(cd->compressed) - TOAST_COMPRESS_HDRSZ,
+								VARDATA(cd->data), offset - VARHDRSZ,
+								false, &cd->state);
+
+	if (res < 0)
+		elog(ERROR, "corrupt compressed data");
+
+	if (res != offset - VARHDRSZ)
+		elog(ERROR, "premature end of compressed data");
+#endif
+
+	cd->decompressed_len = offset;
 }
