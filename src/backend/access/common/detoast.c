@@ -45,12 +45,46 @@ struct varlena *
 detoast_external_attr(struct varlena *attr)
 {
 	struct varlena *result;
+/*
+	elog(NOTICE, "detoast_external_attr1");
+
+
+	/* ПРОВЕРКА ВХОДНОГО УКАЗАТЕЛЯ */
+/*	if (!attr) {
+		elog(ERROR, "detoast_external_attr: NULL pointer");
+	}
+
+	/* Проверка выравнивания */
+/*	if ((uintptr_t)attr & (sizeof(int32)-1)) {
+		elog(WARNING, "detoast_external_attr: unaligned pointer %p", (void *)attr);
+	}
+
+	/* Безопасное чтение заголовка */
+/*	uint8 va_header;
+	PG_TRY();
+	{
+		va_header = ((varattrib_1b *)attr)->va_header;
+		elog(NOTICE, "detoast_external_attr: va_header = 0x%02x at %p",
+			 va_header, (void *)attr);
+	}
+	PG_CATCH();
+	{
+		elog(ERROR, "detoast_external_attr: cannot read va_header at %p",
+			 (void *)attr);
+	}
+	PG_END_TRY();
+
+*/
+
+
+
 
 	if (VARATT_IS_EXTERNAL_ONDISK(attr))
 	{
 		/*
 		 * This is an external stored plain value
 		 */
+/*		elog(NOTICE, "detoast_external_attr if");*/
 		result = toast_fetch_datum(attr);
 	}
 	else if (VARATT_IS_EXTERNAL_INDIRECT(attr))
@@ -59,7 +93,7 @@ detoast_external_attr(struct varlena *attr)
 		 * This is an indirect pointer --- dereference it
 		 */
 		struct varatt_indirect redirect;
-
+/*		elog(NOTICE, "detoast_external_attr else if1");*/
 		VARATT_EXTERNAL_GET_POINTER(redirect, attr);
 		attr = (struct varlena *) redirect.pointer;
 
@@ -67,9 +101,10 @@ detoast_external_attr(struct varlena *attr)
 		Assert(!VARATT_IS_EXTERNAL_INDIRECT(attr));
 
 		/* recurse if value is still external in some other way */
-		if (VARATT_IS_EXTERNAL(attr))
+		if (VARATT_IS_EXTERNAL(attr)){
+/*			elog(NOTICE, "detoast_external_attr else if2");*/
 			return detoast_external_attr(attr);
-
+		}
 		/*
 		 * Copy into the caller's memory context, in case caller tries to
 		 * pfree the result.
@@ -84,7 +119,7 @@ detoast_external_attr(struct varlena *attr)
 		 */
 		ExpandedObjectHeader *eoh;
 		Size		resultsize;
-
+	/*	elog(NOTICE, "detoast_external_attr else if3");*/
 		eoh = DatumGetEOHP(PointerGetDatum(attr));
 		resultsize = EOH_get_flat_size(eoh);
 		result = (struct varlena *) palloc(resultsize);
@@ -92,6 +127,7 @@ detoast_external_attr(struct varlena *attr)
 	}
 	else
 	{
+/*		elog(NOTICE, "detoast_external_attr else");*/
 		/*
 		 * This is a plain value inside of the main tuple - why am I called?
 		 */

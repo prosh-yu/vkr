@@ -856,26 +856,48 @@ json_object_field(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 }
 
+static JsonbValue *
+json_object_field_internal(Jsonb *jb, CompressedDatum *cd, text *key)
+{
+
+	if (!JB_ROOT_IS_OBJECT(jb)){
+		elog(NOTICE, "json_object_field_internal jsonfuncs.c NULL");
+		return NULL;
+	}
+	elog(NOTICE, "json_object_field_internal compressed=%d", cd->compressed);
+	elog(NOTICE, "json_object_field_internal decompressed_len=%d", cd->decompressed_len);
+	return jsonbzFindKeyInObject(jb, cd,
+							   VARDATA_ANY(key),
+							   VARSIZE_ANY_EXHDR(key));
+}
+
 Datum
 jsonb_object_field(PG_FUNCTION_ARGS)
 {
-	Jsonb	   *jb = PG_GETARG_JSONB_P(0);
-	text	   *key = PG_GETARG_TEXT_PP(1);
-	JsonbValue *v;
-	JsonbValue	vbuf;
+	Datum jsonb_arg = PG_GETARG_DATUM(0);
+    Datum text_arg = PG_GETARG_DATUM(1);
+	JsonbValue *res;
+	CompressedDatum cd;
+	memset(&cd, 0, sizeof(CompressedDatum));
 
-	if (!JB_ROOT_IS_OBJECT(jb))
+	elog(NOTICE, "jsonb_object_field");
+	Jsonb *jb = DatumGetJsonbPC(jsonb_arg, NULL, &cd);
+
+	elog(NOTICE, "jsonb_object_field compressed=%p", cd.compressed);
+	elog(NOTICE, "jsonb_object_field decompressed_len=%d", cd.decompressed_len);
+
+	text *key = DatumGetTextPP(text_arg);
+	elog(NOTICE, "jsonb_object_field jsonfuncs.c3 key=%s", VARDATA_ANY(key));
+	res = json_object_field_internal(jb, &cd, key);
+
+	if (res){
+		elog(NOTICE, "jsonb_object_field jsonfuncs.c if");
+		PG_RETURN_JSONB_P(JsonbValueToJsonb(res));
+	}
+	else{
+		elog(NOTICE, "jsonb_object_field jsonfuncs.c else");
 		PG_RETURN_NULL();
-
-	v = getKeyJsonValueFromContainer(&jb->root,
-									 VARDATA_ANY(key),
-									 VARSIZE_ANY_EXHDR(key),
-									 &vbuf);
-
-	if (v)
-		PG_RETURN_JSONB_P(JsonbValueToJsonb(v));
-	else
-		PG_RETURN_NULL();
+	}
 }
 
 Datum

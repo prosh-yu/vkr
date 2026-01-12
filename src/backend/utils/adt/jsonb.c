@@ -100,6 +100,7 @@ jsonb_out(PG_FUNCTION_ARGS)
 {
 	Jsonb	   *jb = PG_GETARG_JSONB_P(0);
 	char	   *out;
+	elog(NOTICE, "jsonb_out");
 	out = JsonbToCString(NULL, &jb->root, VARSIZE(jb));
 
 	PG_RETURN_CSTRING(out);
@@ -493,6 +494,7 @@ JsonbToCStringWorker(StringInfo out, JsonbContainer *in, int estimated_len, bool
 	bool		raw_scalar = false;
 	bool		last_was_key = false;
 
+	elog(NOTICE, "JsonbToCStringWorker");
 	if (out == NULL)
 		out = makeStringInfo();
 
@@ -2055,4 +2057,59 @@ JsonbUnquote(Jsonb *jb)
 	}
 	else
 		return JsonbToCString(NULL, &jb->root, VARSIZE(jb));
+}
+Jsonb *
+JsonbExpand(Datum value, bool freeValue)
+{
+    Jsonb       *jsonb;
+    Size        size = sizeof(Jsonb) + sizeof(CompressedJsonb);
+	elog(NOTICE, "-JsonbExpand endif data_size=%d", size);
+
+#ifndef JSONB_EXPANDED_MCXT
+        /* Стандартное выделение в текущем контексте */
+	elog(NOTICE, "-JsonbExpand if");
+	jsonb = (Jsonb *) palloc0(size);
+#else
+        /* Выделение в отдельном контексте памяти */
+	elog(NOTICE, "-JsonbExpand else1");
+    MemoryContext objcxt =
+            AllocSetContextCreate(CurrentMemoryContext,
+                                  "expanded jsonb",
+                                  ALLOCSET_SMALL_MINSIZE,
+                                  ALLOCSET_SMALL_INITSIZE,
+                                  ALLOCSET_DEFAULT_MAXSIZE);
+	elog(NOTICE, "-JsonbExpand else2");
+    jsonb = (Jsonb *) MemoryContextAllocZero(objcxt, size);
+#endif
+	elog(NOTICE, "-JsonbExpand3");
+    /* Заполняем заголовок JSONB */
+    SET_VARSIZE(jsonb, size);
+
+	elog(NOTICE, "-JsonbExpand endif: jsonb=%p, header=0x%x",
+         jsonb, jsonb->root.header);
+    elog(NOTICE, "-JsonbExpand3: returning %p", jsonb);
+
+    return jsonb;
+}
+
+static Jsonb *
+JsonExpandDatum(Datum value, Jsonb *tmp)
+{
+	struct varlena *toasted;
+	struct varlena *detoasted;
+
+	elog(NOTICE, "JsonExpandDatum");
+
+	toasted = (struct varlena *) DatumGetPointer(value);
+	detoasted = pg_detoast_datum(toasted);
+	return JsonbExpand(tmp, PointerGetDatum(detoasted));
+}
+Jsonb *
+DatumGetJson(Datum value, Jsonb *tmp)
+{
+	Jsonb	   *jsonb;
+	elog(NOTICE, "DatumGetJson");
+	jsonb = JsonExpandDatum(value, tmp);
+
+	return jsonb;
 }

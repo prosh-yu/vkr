@@ -211,8 +211,8 @@ typedef struct JsonbContainer
 #define JB_FSCALAR				0x50000000	/* scalar pseudo-array */
 
 /* flags for findJsonbValueFromContainer() */
-//#define JB_FOBJECT				0x01
-//#define JB_FARRAY				0x02
+/*#define JB_FOBJECT				0x01
+#define JB_FARRAY				0x02*/
 /* convenience macros for accessing a JsonbContainer struct */
 #define JsonContainerSize(jc)		((jc)->header & JB_CMASK)
 #define JsonContainerIsScalar(jc)	(((jc)->header & JB_FSCALAR) == JB_FSCALAR)
@@ -234,9 +234,10 @@ typedef struct
 #define JB_ROOT_IS_OBJECT(jbp_) ((*(uint32 *) VARDATA(jbp_) & JB_FOBJECT) == JB_FOBJECT || \
 								 (*(uint32 *) VARDATA(jbp_) & JB_FOBJECT_SORTED) == JB_FOBJECT_SORTED)
 #define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_FARRAY) == JB_FARRAY)
-
-//#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FSCALAR || \
-								// (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FARRAY)
+/*
+#define JB_ROOT_IS_ARRAY(jbp_)	((*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FSCALAR || \
+								 (*(uint32 *) VARDATA(jbp_) & JB_TMASK) == JB_FARRAY)
+*/
 
 
 enum jbvType
@@ -437,7 +438,12 @@ typedef struct JsonbIterator
 	struct JsonbIterator *parent;
 } JsonbIterator;
 
-
+extern void CompressedDatumInit(CompressedDatum *cd, Datum d);
+extern void CompressedDatumDecompress(CompressedDatum *cd, Size offset);
+extern Jsonb * jsonbzInit(Datum value, CompressedDatum *cd);
+extern Jsonb *JsonbExpand(Datum value, bool freeValue);
+extern JsonbValue *findValueInCompressedJsonbObject(CompressedDatum *cd, Jsonb *jb,
+							 const char *keystr, int keylen);
 /* Convenience macros */
 static inline Jsonb *
 DatumGetJsonbP(Datum d)
@@ -448,16 +454,19 @@ DatumGetJsonbP(Datum d)
 static inline Jsonb *
 DatumGetJsonbPCopy(Datum d)
 {
+	elog(NOTICE, "DatumGetJsonbPCopy");
 	return (Jsonb *) PG_DETOAST_DATUM_COPY(d);
 }
 
 static inline Datum
 JsonbPGetDatum(const Jsonb *p)
 {
+	elog(NOTICE, "JsonbPGetDatum");
 	return PointerGetDatum(p);
 }
 
 #define PG_GETARG_JSONB_P(x)	DatumGetJsonbP(PG_GETARG_DATUM(x))
+#define PG_GETARG_JSONB_PC(x, cd)	DatumGetJsonbPC(PG_GETARG_DATUM(x), NULL, cd)
 #define PG_GETARG_JSONB_P_COPY(x)	DatumGetJsonbPCopy(PG_GETARG_DATUM(x))
 #define PG_RETURN_JSONB_P(x)	PG_RETURN_POINTER(x)
 
@@ -506,4 +515,6 @@ extern Datum jsonb_build_object_worker(int nargs, const Datum *args, const bool 
 extern Datum jsonb_build_array_worker(int nargs, const Datum *args, const bool *nulls,
 									  const Oid *types, bool absent_on_null);
 
+extern Jsonb *DatumGetJsonbPC(Datum datum, Jsonb *tmp, CompressedDatum *cd);
+extern JsonbValue *jsonbzFindKeyInObject(Jsonb *jb, CompressedDatum *cd, const char *key, int len);
 #endif							/* __JSONB_H__ */
