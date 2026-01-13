@@ -2079,22 +2079,3 @@ JsonbExpand(Datum value, bool freeValue)
 
     return jsonb;
 }
-
-static Jsonb *
-JsonExpandDatum(Datum value, Jsonb *tmp)
-{
-	struct varlena *toasted;
-	struct varlena *detoasted;
-
-	toasted = (struct varlena *) DatumGetPointer(value);
-	detoasted = pg_detoast_datum(toasted);
-	return JsonbExpand(tmp, PointerGetDatum(detoasted));
-}
-Jsonb *
-DatumGetJson(Datum value, Jsonb *tmp)
-{
-	Jsonb	   *jsonb;
-	jsonb = JsonExpandDatum(value, tmp);
-
-	return jsonb;
-}
