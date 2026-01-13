@@ -415,13 +415,6 @@ pglz_find_match(int16 *hstart, const char *input, const char *end,
 	int32		len = 0;
 	int32		off = 0;
 
-/*
-#ifndef FRONTEND
-	elog(NOTICE, "pglz_find_match");
-#else
-	fprintf(stderr, "pglz_find_match\n");
-#endif
-*/
 	/*
 	 * Traverse the linked history list until a good enough match is found.
 	 */
@@ -548,12 +541,6 @@ pglz_compress(const char *source, int32 slen, char *dest,
 	int			hashsz;
 	int			mask;
 
-
-#ifndef FRONTEND
-	elog(NOTICE, "pglz_compress");
-#else
-	fprintf(stderr, "pglz_compress\n");
-#endif
 
 	/*
 	 * Our fallback strategy is the default.
@@ -728,12 +715,6 @@ pglz_decompress_state(const char *source, int32 slen, char *dest,
 	int32		len;
 	int32		remlen;
 	int32		off;
-
-#ifndef FRONTEND
-	elog(NOTICE, "pglz_decompress");
-#else
-	fprintf(stderr, "pglz_decompress\n");
-#endif
 
 	srcend = ((const unsigned char *) source) + slen;
 	destend = ((unsigned char *) dest) + rawsize;
@@ -940,11 +921,6 @@ pglz_maximum_compressed_size(int32 rawsize, int32 total_compressed_size)
 {
 	int64		compressed_size;
 
-#ifndef FRONTEND
-	elog(NOTICE, "pglz_maximum_compressed_size");
-#else
-	fprintf(stderr, "pglz_maximum_compressed_size\n");
-#endif
 
 	/*
 	 * pglz uses one control bit per byte, so if the entire desired prefix is

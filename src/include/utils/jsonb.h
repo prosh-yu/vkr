@@ -454,14 +454,12 @@ DatumGetJsonbP(Datum d)
 static inline Jsonb *
 DatumGetJsonbPCopy(Datum d)
 {
-	elog(NOTICE, "DatumGetJsonbPCopy");
 	return (Jsonb *) PG_DETOAST_DATUM_COPY(d);
 }
 
 static inline Datum
 JsonbPGetDatum(const Jsonb *p)
 {
-	elog(NOTICE, "JsonbPGetDatum");
 	return PointerGetDatum(p);
 }
 

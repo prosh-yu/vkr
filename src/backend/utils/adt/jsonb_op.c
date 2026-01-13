@@ -113,7 +113,6 @@ jsonb_contains(PG_FUNCTION_ARGS)
 
 	JsonbIterator *it1,
 			   *it2;
-	elog(NOTICE, "jsonb_contains");
 	if (JB_ROOT_IS_OBJECT(val) != JB_ROOT_IS_OBJECT(tmpl))
 		PG_RETURN_BOOL(false);
 
